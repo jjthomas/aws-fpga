@@ -147,6 +147,5 @@ if [[ $act_sha256 != $exp_sha256 ]]; then
   err_msg "  There may be an issue with the uploaded checkpoint or the download failed."
   return 2
 fi
-sudo cp -r $dsa_dir/..//xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3 $XILINX_SDX/platforms/
 info_msg "SDK DSA is up-to-date"
 

@@ -1,7 +1,9 @@
 
 # AWS EC2 SDAccel Quickstart
 
-Both Software(SW) and Hardware(HW) Emulation modes in SDAccel are now supported.  
+Software(SW) and Hardware(HW) Emulation modes in SDAccel are now supported.  In addition, HW builds are now supported. 
+
+Building 
 
 The quickstart examples require Xilinx 2016.4 SDx tool set, which are included in the [AWS FPGA Developer AMI available from AWS Marketplace](https://aws.amazon.com/marketplace/pp/B06VVYBLZZ).  
 
@@ -24,6 +26,7 @@ The main goal of SW emulation is to ensure functional correctness and to partiti
 ```
     $ cd $SDK_DIR/SDAccel/examples/xilinx/getting_started/basic/hello/             # Start using an SDAccel example
     $ make clean                                                                   # clean up before you start
+    $ export XCL_EMULATION_MODE=sw_emu
     $ emconfigutil -f $SDK_DIR/SDAccel/platforms/xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3/hw/xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.dsa --nd 1                                                                 # Create emulation config file
     $ make TARGETS=sw_emu DEVICES=$SDK_DIR/SDAccel/platforms/xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3/xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.xpfm all      # Compile using xocc.  "hw_emu" is another option
     $ ./hello xclbin/krnl_hello.sw_emu.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.xclbin # Run using sw emulation
@@ -38,7 +41,21 @@ The instructions below describe how to get started on SDAccel development using 
 ```
     $ cd $SDK_DIR/SDAccel/examples/xilinx/getting_started/basic/hello/             # Start using an SDAccel example
     $ make clean                                                                   # clean up before you start
+    $ export XCL_EMULATION_MODE=hw_emu
     $ emconfigutil -f $SDK_DIR/SDAccel/platforms/xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3/hw/xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.dsa --nd 1                                                                 # Create emulation config file
     $ make TARGETS=hw_emu DEVICES=$SDK_DIR/SDAccel/platforms/xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3/xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.xpfm all      # Compile using xocc.  "hw_emu" is another option
     $ ./hello xclbin/krnl_hello.sw_emu.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.xclbin # Run using hw emulation
+```
+## AWS EC2 SDAccel Example FPGA Hardware Build 
+
+The SDAccel build flow enables the developer to compile custom kernels.  
+
+The instructions below describe how to build for FPGA Hardware: 
+
+```
+    $ cd $SDK_DIR/SDAccel/examples/xilinx/getting_started/basic/hello/             # Start using an SDAccel example
+    $ make clean                                                                   # clean up before you start
+    $ export XCL_EMULATION_MODE=
+    $ make DEVICES=$SDK_DIR/SDAccel/platforms/xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3/xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.xpfm CLFLAGS="--xp param:compiler.worstNegativeSlack=-0.025" all  # Compile using xocc.  
+    # Run is not supported
 ```
