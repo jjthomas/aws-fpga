@@ -84,11 +84,13 @@ fi
 timestamp=$(date +"%y_%m_%d-%H%M%S")
 kernel="hello"
 
+mkdir to_aws
+
 #split xcp file
 $XILINX_SDX/runtime/bin/xclbinsplit -o ${kernel} _xocc_link_krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3_krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.dir/impl/build/system/krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3/bitstream/krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.xcp
 
 #rename .bit to .dcp
-mv ${kernel}-primary.bit ${kernel}_${timestamp}_SH_CL_routed.dcp
+mv ${kernel}-primary.bit to_aws/${kernel}_${timestamp}_SH_CL_routed.dcp
 
 #generate manifest
 strategy=DEFAULT
@@ -129,13 +131,13 @@ hdk_version=1.2.0
 #hdk_version=$(grep 'HDK_VERSION' $HDK_DIR/hdk_version.txt | sed 's/=/ /g' | awk '{print $2}')
 
 # Get the Shell Version
-shell_version=FIXME
+shell_version=0x04151701
 #shell_version=$(grep 'SHELL_VERSION' $HDK_SHELL_DIR/shell_version.txt | sed 's/=/ /g' | awk '{print $2}')
 
 # Get the PCIe Device & Vendor ID from ID0
-id0_version=FIXME
-device_id=FIXME
-vendor_id=FIXME
+#id0_version=
+device_id=0xF000
+vendor_id=0x1D0F
 #id0_version=$(grep 'CL_SH_ID0' $CL_DIR/design/cl_id_defines.vh | grep 'define' | sed 's/_//g' | awk -F "h" '{print $2}')
 #device_id="0x${id0_version:0:4}";
 #vendor_id="0x${id0_version:4:4}";
@@ -144,13 +146,13 @@ vendor_id=FIXME
 #id1_version=$(grep 'CL_SH_ID1' $CL_DIR/design/cl_id_defines.vh | grep 'define' | sed 's/_//g' | awk -F "h" '{print $2}')
 #subsystem_id="0x${id1_version:0:4}";
 #subsystem_vendor_id="0x${id1_version:4:4}";
-id1_version=FIXME
-subsystem_id=FIXME
-subsystem_vendor_id=FIXME
+#id1_version=FIXME
+subsystem_id=0x1D51
+subsystem_vendor_id=0xFEDD
 
 #convert to bash
-hash=$( sha256sum  ${kernel}_${timestamp}_SH_CL_routed.dcp | awk '{ print $1 }' )
-FILENAME="${kernel}_${timestamp}_manifest.txt"
+hash=$( sha256sum  to_aws/${kernel}_${timestamp}_SH_CL_routed.dcp | awk '{ print $1 }' )
+FILENAME="to_aws/${kernel}_${timestamp}_manifest.txt"
 exec 3<>$FILENAME
 echo "manifest_format_version=1" >&3
 echo "pci_vendor_id=$vendor_id" >&3
@@ -168,7 +170,8 @@ echo "clock_recipe_c=$clock_recipe_c" >&3
 exec 3>&-
 
 #tar .dcp and manifest
-tar -cf ${kernel}_${timestamp}_Developer_CL.tar ${kernel}_${timestamp}_SH_CL_routed.dcp ${kernel}_${timestamp}_manifest.txt
+
+tar -cf ${kernel}_${timestamp}_Developer_CL.tar to_aws/${kernel}_${timestamp}_SH_CL_routed.dcp to_aws/${kernel}_${timestamp}_manifest.txt
 
 
 #Create .awsxclbin
