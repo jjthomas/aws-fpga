@@ -18,6 +18,7 @@
 export SDK_DIR=${SDK_DIR:=$(pwd)/sdk}
 
 echo "Done setting environment variables."
+git submodule update --init -- sdk/SDAccel/examples/xilinx
 
 # 
 # Execute sdk_install.sh inside a subshell so the user's current
