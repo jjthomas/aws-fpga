@@ -90,8 +90,8 @@ namespace awsbwhal {
         awsmgmt_ioc_bitstream_axlf obj = { const_cast<axlf *>(buffer) };
         return ioctl(mMgtHandle, cmd, &obj);
 #else
-        const char* afi_id = get_afi_from_xclBin(buffer);
-        return fpga_mgmt_load_local_image(mBoardNumber, afi_id);
+        const char* afi_id = get_afi_from_axlf(buffer);
+        return fpga_mgmt_load_local_image(mBoardNumber, const_cast<char *>(afi_id));
 #endif
     }
 
@@ -116,7 +116,7 @@ namespace awsbwhal {
         return ioctl(mMgtHandle, cmd, &obj);
 #else
 	const char* afi_id = get_afi_from_xclBin(buffer);
-	return fpga_mgmt_load_local_image(mBoardNumber, afi_id);
+	return fpga_mgmt_load_local_image(mBoardNumber, const_cast<char *>(afi_id));
 	// TODO - add printout and eror case handing
 #endif
     }

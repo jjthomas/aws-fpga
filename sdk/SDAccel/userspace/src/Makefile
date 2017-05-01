@@ -21,8 +21,6 @@ LIBS := $(STLIB) $(SHLIB)
 
 XCLHAL_VER =-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=1
 
-#SHIM_INC := -I../../../ -I../../../../../linux_kernel_drivers
-
 # Include XCLHAL includes, AWS fpga_pci/mgmt and AWS kernel drivers
 SHIM_INC := -I../include -I$(SDK_DIR)/userspace/include -I$(SDK_DIR)/linux_kernel_drivers
 
@@ -54,8 +52,8 @@ clean:
 	rm -rf *.o *.d lib*drv.*
 
 %.o: %.$(CXX_EXT)
-	$(CXX) $(CXXFLAGS) $(MYCFLAGS) -c $< -o $@
-	$(CXX) $(CXXFLAGS) $(MYCFLAGS) -c -MM $< -o $(patsubst %.o, %.d, $@)
+	$(CXX) $(CXXFLAGS) $(MYCFLAGS) $(MYCXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(MYCFLAGS) $(MYCXXFLAGS) -c -MM $< -o $(patsubst %.o, %.d, $@)
 
 $(STLIB) : $(OBJS)
 	$(AR) $(ARFLAGS) -o $@ $(OBJS)
