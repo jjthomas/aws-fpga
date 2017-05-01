@@ -15,10 +15,10 @@
 # permissions and limitations under the License.
 #
 script=${BASH_SOURCE[0]}
-if [ $script == $0 ]; then
-  echo "ERROR: You must source this script"
-  exit 2
-fi
+#if [ $script == $0 ]; then
+#  echo "ERROR: You must source this script"
+#  exit 2
+#fi
 full_script=$(readlink -f $script)
 script_name=$(basename $full_script)
 script_dir=$(dirname $full_script)
@@ -41,7 +41,7 @@ function err_msg {
 }
 
 function usage {
-  echo -e "USAGE: source [\$AWS_FPGA_REPO_DIR/]$script_name [-d|-debug] [-h|-help]"
+  echo -e "USAGE: $script_name [-d|-debug] [-h|-help] [-k|-kernal <kernal_name>]"
 }
 
 function help {
@@ -67,27 +67,35 @@ for (( i = 0; i < ${#args[@]}; i++ )); do
       help
       return 0
     ;;
+    -k|-kernel)
+      kernel=${args[$i + 1]}
+      echo $kernel
+      break
+    ;;
     *)
       err_msg "Invalid option: $arg\n"
       usage
-      return 1
+      exit 1
   esac
 done
 
 if [[ -x "$kernel" ]]
 then
-    echo "File '$file' is executable"
+    echo "File '$kernel' is executable"
 else
-    echo "File '$file' is not executable or found"
+    echo "File '$kernel' is not executable or found"
+    exit 1
 fi
 
 timestamp=$(date +"%y_%m_%d-%H%M%S")
-kernel="hello"
 
 mkdir to_aws
 
 #split xcp file
-$XILINX_SDX/runtime/bin/xclbinsplit -o ${kernel} _xocc_link_krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3_krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.dir/impl/build/system/krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3/bitstream/krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.xcp
+$XILINX_SDX/runtime/bin/xclbinsplit -o ${kernel} xclbin/krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.xclbin
+
+#OLD LOCATION of XCP file
+#$XILINX_SDX/runtime/bin/xclbinsplit -o ${kernel} _xocc_link_krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3_krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.dir/impl/build/system/krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3/bitstream/krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.xcp
 
 #rename .bit to .dcp
 mv ${kernel}-primary.bit to_aws/${kernel}_${timestamp}_SH_CL_routed.dcp
@@ -170,13 +178,9 @@ echo "clock_recipe_c=$clock_recipe_c" >&3
 exec 3>&-
 
 #tar .dcp and manifest
-
 tar -cf ${kernel}_${timestamp}_Developer_CL.tar to_aws/${kernel}_${timestamp}_SH_CL_routed.dcp to_aws/${kernel}_${timestamp}_manifest.txt
-
 
 #Create .awsxclbin
 cat ${kernel}-meta.xml >> ${kernel}_${timestamp}.awsxclbin
 echo ${kernel}_afi_id.txt >> ${kernel}_${timestamp}.awsxclbin
   
-
-
