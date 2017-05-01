@@ -41,7 +41,7 @@ OBJS := $(patsubst %.$(CXX_EXT), %.o , $(SRCS))
 
 # the name that will be included as libXXXXX.so
 AWS_FPGA_MGMTLIB := fpga_mgmt
-AWS_FPGA_MGMTLIB_DIR := /usr/local/lib
+AWS_FPGA_MGMTLIB_DIR := $(SDK_DIR)/userspace/lib
 
 ifeq ($(ec2),1)
 LDFLAGS += -L$(AWS_FPGA_MGMTLIB_DIR)
