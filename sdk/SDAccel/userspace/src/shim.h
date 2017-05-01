@@ -160,8 +160,11 @@ namespace awsbwhal {
         void initMemoryManager();
 
         // Core DMA code
-        SHIM_O2 int pcieBarRead(int bar_num, unsigned long long offset, void* buffer, unsigned long long length);
-        SHIM_O2 int pcieBarWrite(int bar_num, unsigned long long offset, const void* buffer, unsigned long long length);
+        // Upper two bytes denote PF, lower two bytes denote BAR
+        // USERPF == 0x0
+        // MGTPF == 0x10000
+        SHIM_O2 int pcieBarRead(unsigned int pf_bar, unsigned long long offset, void* buffer, unsigned long long length);
+        SHIM_O2 int pcieBarWrite(unsigned int pf_bar, unsigned long long offset, const void* buffer, unsigned long long length);
         int freezeAXIGate();
         int freeAXIGate();
 
