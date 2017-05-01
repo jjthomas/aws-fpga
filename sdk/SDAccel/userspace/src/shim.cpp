@@ -60,23 +60,49 @@
 #include "xclbin.h"
 
 #ifdef INTERNAL_TESTING
-#include "xdma/include/xdma-ioctl.h"
-#include "baremetal/mgmt/mgmt-ioctl.h"
+#include "xdma/xdma_ioctl.h"
+#include "mgmt/mgmt-ioctl.h"
 #else
 
 #include <fpga_mgmt.h>
 #include <fpga_pci.h>
 
 // TODO - define this in a header file
-extern char* get_afi_from_xclBin(const xclBin *);
+extern const char* get_afi_from_xclBin(const xclBin *buffer);
+extern const char *get_afi_from_axlf(const axlf *buffer);
 
 #endif
 
 namespace awsbwhal {
     const unsigned AwsXcl::TAG = 0X586C0C6C; // XL OpenCL X->58(ASCII), L->6C(ASCII), O->0 C->C L->6C(ASCII);
 
+    int AwsXcl::xclLoadAxlf(const axlf *buffer)
+    {
+        if ( mLogStream.is_open()) {
+            mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buffer << std::endl;
+        }
+
+        if ( !mLocked)
+            return -EPERM;
+
+#ifdef INTERNAL_TESTING
+        const unsigned cmd = AWSMGMT_IOCICAPDOWNLOAD_AXLF;
+        awsmgmt_ioc_bitstream_axlf obj = { const_cast<axlf *>(buffer) };
+        return ioctl(mMgtHandle, cmd, &obj);
+#else
+        const char* afi_id = get_afi_from_xclBin(buffer);
+        return fpga_mgmt_load_local_image(mBoardNumber, afi_id);
+#endif
+    }
+
     int AwsXcl::xclLoadXclBin(const xclBin *buffer)
     {
+        char *xclbininmemory = reinterpret_cast<char*> (const_cast<xclBin*> (buffer));
+
+        if (!memcmp(xclbininmemory, "xclbin2", 8)){
+            return xclLoadAxlf(reinterpret_cast<axlf*>(xclbininmemory));
+        }
+
         if (mLogStream.is_open()) {
             mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buffer << std::endl;
         }
@@ -89,53 +115,18 @@ namespace awsbwhal {
         awsmgmt_ioc_bitstream obj = {const_cast<xclBin *>(buffer)};
         return ioctl(mMgtHandle, cmd, &obj);
 #else
-	char* afi_id = get_afi_from_xclBin(buffer);
-	int ret=0;
+	const char* afi_id = get_afi_from_xclBin(buffer);
 	return fpga_mgmt_load_local_image(mBoardNumber, afi_id);
 	// TODO - add printout and eror case handing
 #endif
     }
+
 
     /* Accessing F1 FPGA memory space (i.e. OpenCL Global Memory) is mapped through AppPF BAR4
      * all offsets are relative to the base address available in AppPF BAR4
      * SDAcell XCL_ADDR_SPACE_DEVICE_RAM enum maps to AwsXcl::ocl_global_mem_bar, which is the
      * handle for AppPF BAR4
      */
-    size_t AwsXcl::xclReadModifyWrite(uint64_t offset, const void *hostBuf, size_t size) {
-        if (mLogStream.is_open()) {
-            mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
-                       << offset << ", " << hostBuf << ", " << size << std::endl;
-        }
-#if GCC_VERSION >= 40800
-        alignas(DDR_BUFFER_ALIGNMENT) char buffer[DDR_BUFFER_ALIGNMENT];
-#else
-        AlignedAllocator<char> alignedBuffer(DDR_BUFFER_ALIGNMENT, DDR_BUFFER_ALIGNMENT);
-        char* buffer = alignedBuffer.getBuffer();
-#endif
-
-        const size_t mod_size = offset % DDR_BUFFER_ALIGNMENT;
-        // Read back one full aligned block starting from preceding aligned address
-        const uint64_t mod_offset = offset - mod_size;
-        if (xclRead(XCL_ADDR_SPACE_DEVICE_RAM, mod_offset, buffer, DDR_BUFFER_ALIGNMENT) != DDR_BUFFER_ALIGNMENT)
-            return -1;
-
-        // Update the local copy of buffer with user requested data
-        const size_t copy_size = (size + mod_size > DDR_BUFFER_ALIGNMENT) ? DDR_BUFFER_ALIGNMENT - mod_size : size;
-        std::memcpy(buffer + mod_size, hostBuf, copy_size);
-
-        // Write back the updated aligned block
-        if (xclWrite(XCL_ADDR_SPACE_DEVICE_RAM, mod_offset, buffer, DDR_BUFFER_ALIGNMENT) != DDR_BUFFER_ALIGNMENT)
-            return -1;
-
-        // Write any remaining blocks over DDR_BUFFER_ALIGNMENT size
-        if (size + mod_size > DDR_BUFFER_ALIGNMENT) {
-            size_t write_size = xclWrite(XCL_ADDR_SPACE_DEVICE_RAM, mod_offset + DDR_BUFFER_ALIGNMENT,
-                                         (const char *)hostBuf + copy_size, size - copy_size);
-            if (write_size != (size - copy_size))
-                return -1;
-        }
-        return size;
-    }
 
     /* Accessing F1 FPGA memory space mapped through AppPF PCIe BARs
     * space = XCL_ADDR_SPACE_DEVICE_RAM maps to AppPF PCIe BAR4, (sh_cl_dma_pcis_ bus), with AwsXcl::ocl_global_mem_bar as handle
@@ -149,41 +140,22 @@ namespace awsbwhal {
         }
 
         if (!mLocked)
-            return -1;
+            return -EPERM;
 
         switch (space) {
         case XCL_ADDR_SPACE_DEVICE_RAM:
         {
             const size_t totalSize = size;
-            const size_t mod_size1 = offset % DDR_BUFFER_ALIGNMENT;
-            const size_t mod_size2 = size % DDR_BUFFER_ALIGNMENT;
-            if (mod_size1) {
-                // Buffer not aligned at DDR_BUFFER_ALIGNMENT boundary, need to do Read-Modify-Write
-                return xclReadModifyWrite(offset, hostBuf, size);
-            }
-            else if (mod_size2) {
-                // Buffer not a multiple of DDR_BUFFER_ALIGNMENT, write out the initial block and
-                // then perform a Read-Modify-Write for the remainder buffer
-                const size_t blockSize = size - mod_size2;
-                if (xclWrite(space, offset, hostBuf, blockSize) != blockSize)
-                    return -1;
-                offset += blockSize;
-                hostBuf = (const char *)hostBuf + blockSize;
-                if (xclReadModifyWrite(offset, hostBuf, mod_size2) != mod_size2)
-                    return -1;
-                return totalSize;
-            }
-
             const char *curr = static_cast<const char *>(hostBuf);
             while (size > maxDMASize) {
-              if (mDataMover->pwrite64(curr,maxDMASize,offset) < 0)
-                return -1;
-              offset += maxDMASize;
+                if (mDataMover->pwrite64(curr,maxDMASize,offset) < 0)
+                return -EIO;
+                offset += maxDMASize;
                 curr += maxDMASize;
                 size -= maxDMASize;
             }
             if (mDataMover->pwrite64(curr,size,offset) < 0)
-              return -1;
+                return -EIO;
             return totalSize;
         }
 
@@ -225,44 +197,6 @@ namespace awsbwhal {
         }
     }
 
-
-    size_t AwsXcl::xclReadSkipCopy(uint64_t offset, void *hostBuf, size_t size) {
-        if (mLogStream.is_open()) {
-            mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
-                       << offset << ", " << hostBuf << ", " << size << std::endl;
-        }
-
-        const size_t mod_size = offset % DDR_BUFFER_ALIGNMENT;
-        // Need to do Read-Modify-Read
-// TODO: Windows build support
-//    alignas is defined in c++11
-#if GCC_VERSION >= 40800
-        alignas(DDR_BUFFER_ALIGNMENT) char buffer[DDR_BUFFER_ALIGNMENT];
-#else
-        AlignedAllocator<char> alignedBuffer(DDR_BUFFER_ALIGNMENT, DDR_BUFFER_ALIGNMENT);
-        char* buffer = alignedBuffer.getBuffer();
-#endif
-
-        // Read back one full aligned block starting from preceding aligned address
-        const uint64_t mod_offset = offset - mod_size;
-        if (xclRead(XCL_ADDR_SPACE_DEVICE_RAM, mod_offset, buffer, DDR_BUFFER_ALIGNMENT) != DDR_BUFFER_ALIGNMENT)
-            return -1;
-
-        const size_t copy_size = (size + mod_size > DDR_BUFFER_ALIGNMENT) ? DDR_BUFFER_ALIGNMENT - mod_size : size;
-
-        // Update the user buffer with partial read
-        std::memcpy(hostBuf, buffer + mod_size, copy_size);
-
-        // Update the remainder of user buffer
-        if (size + mod_size > DDR_BUFFER_ALIGNMENT) {
-            const size_t read_size = xclRead(XCL_ADDR_SPACE_DEVICE_RAM, mod_offset + DDR_BUFFER_ALIGNMENT,
-                                             (char *)hostBuf + copy_size, size - copy_size);
-            if (read_size != (size - copy_size))
-                return -1;
-        }
-        return size;
-    }
-
     size_t AwsXcl::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size) {
         if (mLogStream.is_open()) {
             mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << space << ", "
@@ -272,43 +206,17 @@ namespace awsbwhal {
         switch (space) {
         case XCL_ADDR_SPACE_DEVICE_RAM:
         {
-            const size_t mod_size1 = offset % DDR_BUFFER_ALIGNMENT;
-            const size_t mod_size2 = size % DDR_BUFFER_ALIGNMENT;
             const size_t totalSize = size;
-
-//            if(!mLocked)
-//              return -1;
-
-            if (mod_size1) {
-                // Buffer not aligned at DDR_BUFFER_ALIGNMENT boundary, need to do Read-Skip-Copy
-                return xclReadSkipCopy(offset, hostBuf, size);
-            }
-            else if (mod_size2) {
-                // Buffer not a multiple of DDR_BUFFER_ALIGNMENT, read the initial block and
-                // then perform a Read-Skip-Copy for the remainder buffer
-                const size_t blockSize = size - mod_size2;
-                if (xclRead(space, offset, hostBuf, blockSize) != blockSize)
-                    return -1;
-                offset += blockSize;
-                hostBuf = (char *)hostBuf + blockSize;
-                if (xclReadSkipCopy(offset, hostBuf, mod_size2) != mod_size2)
-                    return -1;
-                return totalSize;
-            }
-
             char *curr = static_cast<char*>(hostBuf);
             while (size > maxDMASize) {
-// TODO: Windows build support
-              if (mDataMover->pread64(curr,maxDMASize,offset) < 0)
-                return -1;
+                if (mDataMover->pread64(curr,maxDMASize,offset) < 0)
+                    return -EIO;
                 offset += maxDMASize;
                 curr += maxDMASize;
                 size -= maxDMASize;
             }
-
-// TODO: Windows build support
             if (mDataMover->pread64(curr,size,offset) < 0)
-              return -1;
+                return -EIO;
             return totalSize;
         }
 //        case XCL_ADDR_SPACE_DEVICE_PERFMON:

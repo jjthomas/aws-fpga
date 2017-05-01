@@ -7,11 +7,11 @@ AR := ar
 ARFLAGS := rcv
 
 ifeq ($(ec2),1)
-	CXXFLAGS :=  -Werror -std=c++11 
+	CXXFLAGS :=  -Werror -std=c++11
 	STLIB = libawsxcldrv.a
 	SHLIB = libawsxcldrv.so
-else 
-# for non-virtualized testing 
+else
+# for non-virtualized testing
 	CXXFLAGS := -Werror -std=c++11 -DINTERNAL_TESTING
 	STLIB = libawsbmdrv.a
 	SHLIB = libawsbmdrv.so
@@ -43,12 +43,15 @@ OBJS := $(patsubst %.$(CXX_EXT), %.o , $(SRCS))
 AWS_FPGA_MGMTLIB := fpga_mgmt
 AWS_FPGA_MGMTLIB_DIR := /usr/local/lib
 
-
+ifeq ($(ec2),1)
+LDFLAGS += -L$(AWS_FPGA_MGMTLIB_DIR)
+LDLIBS += -l$(AWS_FPGA_MGMTLIB)
+endif
 
 all: $(LIBS)
 
 clean:
-	rm -rf *.o *.d lib*drv.* 
+	rm -rf *.o *.d lib*drv.*
 
 %.o: %.$(CXX_EXT)
 	$(CXX) $(CXXFLAGS) $(MYCFLAGS) -c $< -o $@
@@ -58,7 +61,7 @@ $(STLIB) : $(OBJS)
 	$(AR) $(ARFLAGS) -o $@ $(OBJS)
 
 $(SHLIB) : $(OBJS)
-	$(CXX) -shared -L$(AWS_FPGA_MGMTLIB_DIR) -l$(AWS_FPGA_MGMTLIB) -o $@ $(OBJS)
+	$(CXX) -shared $(LDFLAGS) $(LDLIBS) -o $@ $(OBJS)
 
 .PHONY: all clean
 

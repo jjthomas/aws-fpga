@@ -141,12 +141,11 @@ namespace awsbwhal {
 
     private:
 
-        size_t xclReadModifyWrite(uint64_t offset, const void *hostBuf, size_t size);
-        size_t xclReadSkipCopy(uint64_t offset, void *hostBuf, size_t size);
+        int xclLoadAxlf(const axlf *buffer);
         bool zeroOutDDR();
 
         bool isXPR() const {
-          return ((mDeviceInfo.mSubsystemId >> 12) == 4);
+            return true;
         }
 
         bool isMultipleOCLClockSupported() {

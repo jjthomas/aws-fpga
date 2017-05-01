@@ -11,6 +11,7 @@
 #elif defined(__cplusplus)
 #include <cstdlib>
 #include <cstdint>
+#include <algorithm>
 #else
 #include <stdlib.h>
 #include <stdint.h>
@@ -55,16 +56,18 @@ extern "C" {
         uint64_t m_driverLength;            /* size of the embedded device driver (currently unused) */
 
         // Extra debug information for hardware and hardware emulation debug
-
+        // Note that this segment has been obsoleted
         uint64_t m_dwarfOffset ;
         uint64_t m_dwarfLength ;
         uint64_t m_ipiMappingOffset ;
         uint64_t m_ipiMappingLength ;
     };
 
-    /*
-     *  XCLBIN1 LAYOUT
-     *  --------------
+
+    /*  AXLF is successor to xclbin0
+     *
+     *  AXLF LAYOUT
+     *  -----------
      *
      *  -----------------------------------------
      *  | Magic                                 |
@@ -77,42 +80,62 @@ extern "C" {
      *  -----------------------------------------
      *
      */
-    enum xclBin1SectionKind {
-        BITSTREAM,
-        CLEARING_BITSTREAM,
-        EMBEDDED_METADATA,
-        FIRMWARE,
-        DEBUG_DATA
+
+    enum axlf_section_kind {
+        BITSTREAM = 0,
+        CLEARING_BITSTREAM = 1,
+        EMBEDDED_METADATA = 2,
+        FIRMWARE = 3,
+        DEBUG_DATA = 4
     };
 
-    struct xclBin1SectionHeader {
-        unsigned m_sectionKind;             /* Section type */
-        unsigned short m_freq[4];           /* Target frequency for the section if applicable */
+    struct axlf_section_header {
+        uint32_t m_sectionKind;             /* Section type */
         char m_sectionName[16];             /* Examples: "stage2", "clear1", "clear2", "ocl1", "ocl2, "ublaze" */
-        unsigned m_customFlagsA;            /* Example: Number of Kernels in this region */
-        unsigned m_customFlagsB;            /* Example: Number of Kernels in this region */
         uint64_t m_sectionOffset;           /* File offset of section data */
         uint64_t m_sectionSize;             /* Size of section data */
     };
 
-    struct xclBin1Header {
+    struct axlf_header {
         uint64_t m_length;                  /* Total size of the xclbin file */
         uint64_t m_timeStamp;               /* Number of seconds since epoch when xclbin was created */
-        unsigned m_version;                 /* Tool version used to create xclbin */
-        unsigned m_mode;                    /* XCLBIN_MODE */
+        uint64_t m_featureRomTimeStamp;     /* TimeSinceEpoch of the featureRom */
+        uint32_t m_version;                 /* Tool version used to create xclbin */
+        uint32_t m_mode;                    /* XCLBIN_MODE */
         uint64_t m_platformId;              /* 64 bit platform ID: vendor-device-subvendor-subdev */
         uint64_t m_featureId;               /* 64 bit feature id */
-        char m_nextXclBin[16];              /* Name of next xclbin file in the daisy chain */
-        char m_debugBin[16];                /* Name of binary with debug information */
-        unsigned m_numSections;             /* Number of section headers */
+        char m_next_axlf[16];               /* Name of next xclbin file in the daisy chain */
+        char m_debug_bin[16];               /* Name of binary with debug information */
+        uint32_t m_numSections;             /* Number of section headers */
     };
 
-    struct xclBin1 {
-        char m_magic[8];                            /* Should be xclbin1\0  */
-        uint64_t m_signature[4];                    /* File signature for validation of binary */
-        struct xclBin1Header m_header;              /* Inline header */
-        struct xclBin1SectionHeader m_sections[1];  /* One or more section headers follow */
+    struct axlf {
+        char m_magic[8];                            /* Should be "xclbin2\0"  */
+        unsigned char m_cipher[32];                 /* Hmac output digest */
+        unsigned char m_keyBlock[256];              /* Signature for validation of binary */
+        uint64_t m_uniqueId;                        /* axlf's uniqueId, use it to skip redownload etc */
+        struct axlf_header m_header;                /* Inline header */
+        struct axlf_section_header m_sections[1];   /* One or more section headers follow */
     };
+
+    //xilinx internal
+    struct xlnx_bitstream {
+        uint8_t m_freq[8];
+        char bits[1];
+    };
+
+# ifdef __cplusplus
+    namespace xclbin {
+      inline const axlf_section_header*
+      get_axlf_section(const axlf* top, axlf_section_kind kind)
+      {
+        auto begin = top->m_sections;
+        auto end = begin + top->m_header.m_numSections;
+        auto itr = std::find_if(begin,end,[kind](const axlf_section_header& sec) { return sec.m_sectionKind==kind; });
+        return (itr!=end) ? &(*itr) : nullptr;
+      }
+    }
+# endif
 
 
 #ifdef __cplusplus
