@@ -454,7 +454,7 @@ namespace awsbwhal {
                                                   mOclRegionProfilingNumberSlots(XPAR_AXI_PERF_MON_2_NUMBER_SLOTS)
     {
         int slot_id = mBoardNumber;
-        mDataMover = new DataMover(mBoardNumber, 1 /* 1 channel each dir */);
+        mDataMover = new DataMover(mBoardNumber, 4 /* 1 channel each dir */);
 // FIXME: need to revisit and change number of channels
 
 #ifdef INTERNAL_TESTING
@@ -513,8 +513,6 @@ namespace awsbwhal {
                                 sda_mgmt_bar = -1;
                     }
 #endif
-
-
         initMemoryManager();
     }
 
