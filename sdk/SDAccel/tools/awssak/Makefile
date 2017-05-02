@@ -30,7 +30,13 @@ OBJS := $(patsubst %.$(CXX_EXT), %.o, $(SRCS))
 
 -include $(OBJS:.o=.d)
 
-LDFLAGS :=
+AWS_FPGA_MGMTLIB := fpga_mgmt
+AWS_FPGA_MGMTLIB_DIR := $(SDK_DIR)/userspace/lib
+
+ifeq ($(ec2),1)
+LDFLAGS += -L$(AWS_FPGA_MGMTLIB_DIR)
+LDLIBS += -l$(AWS_FPGA_MGMTLIB)
+endif
 
 #$(error $(ODIR))
 #$(error $(DIR))
@@ -43,7 +49,7 @@ all : $(EXENAME)
 	$(CXX) $(CXXFLAGS) $(MYCFLAGS) $(MYCXXFLAGS) -c -MM $< -o $(patsubst %.o, %.d, $@)
 
 $(EXENAME): $(OBJS) $(AWSBM_HAL_LIBNAME)
-	$(CXX) -o $@ $(OBJS) $(LDFLAGS) $(AWSBM_HAL_LIBNAME)
+	$(CXX) -o $@ $(OBJS) $(AWSBM_HAL_LIBNAME) $(LDFLAGS) $(LDLIBS)
 
 clean:
 	rm -rf *.o *.d $(EXENAME)

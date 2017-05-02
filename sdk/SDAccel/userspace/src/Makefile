@@ -59,7 +59,7 @@ $(STLIB) : $(OBJS)
 	$(AR) $(ARFLAGS) -o $@ $(OBJS)
 
 $(SHLIB) : $(OBJS)
-	$(CXX) -shared $(LDFLAGS) $(LDLIBS) -o $@ $(OBJS)
+	$(CXX) -shared -o $@ $(OBJS) $(LDFLAGS) $(LDLIBS)
 
 .PHONY: all clean
 
