@@ -221,7 +221,7 @@ namespace awsbwhal {
         uint32_t bin2dec(const char * str, int start, int number);
         std::string dec2bin(uint32_t n);
         std::string dec2bin(uint32_t n, unsigned bits);
-        static std::string getDSAName(unsigned short deviceId, unsigned short subsystemId);
+        static const std::string getDSAName(unsigned short deviceId, unsigned short subsystemId);
 
     private:
         // This is a hidden signature of this class and helps in preventing

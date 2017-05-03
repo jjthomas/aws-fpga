@@ -679,11 +679,10 @@ namespace awsbwhal {
             return true;
         }
 
-        std::string AwsXcl::getDSAName(unsigned short deviceId, unsigned short subsystemId)
+        const std::string AwsXcl::getDSAName(unsigned short deviceId, unsigned short subsystemId)
         {
             // Hard coded to AWS DSA name
-            std::string dsa("xilinx:minotaur-vu9p-f1:4ddr-xpr:3.3");
-            return dsa;
+            return "xilinx:aws-vu9p-f1:4ddr-xpr-2pr:4.0";
         }
 
         int AwsXcl::xclGetDeviceInfo2(xclDeviceInfo2 *info)
