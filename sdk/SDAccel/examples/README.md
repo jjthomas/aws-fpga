@@ -24,7 +24,7 @@ The instructions below describe how to get started on SDAccel development using 
     $ export XCL_EMULATION_MODE=hw_emu
     $ emconfigutil -f $SDK_DIR/SDAccel/aws_platform/xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0/hw/xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0.dsa --nd 1                                                                 # Create emulation config file
     $ make TARGETS=hw_emu DEVICES=$SDK_DIR/SDAccel/aws_platform/xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0/xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0.xpfm all      # Compile using xocc.  "hw_emu" is another option
-    $ ./hello xclbin/krnl_hello.sw_emu.xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0.xclbin # Run using hw emulation
+    $ ./hello xclbin/krnl_hello.hw_emu.xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0.xclbin # Run using hw emulation
 ```
 # AWS SDAccel Example FPGA Hardware Build 
 
