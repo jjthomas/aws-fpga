@@ -1,6 +1,6 @@
 /**
- * Xilinx SDAccel xclbin container definition
- * Copyright (C) 2015-2016, Xilinx Inc - All rights reserved
+ *  Xilinx SDAccel xclbin container definition
+ *  Copyright (C) 2015-2017, Xilinx Inc - All rights reserved
  */
 
 #ifndef _XCLBIN_H_
@@ -36,6 +36,8 @@ extern "C" {
         XCLBIN_PR,
         XCLBIN_TANDEM_STAGE2,
         XCLBIN_TANDEM_STAGE2_WITH_PR,
+        XCLBIN_HW_EMU,
+        XCLBIN_SW_EMU,
         XCLBIN_MODE_MAX
     };
 
@@ -56,16 +58,14 @@ extern "C" {
         uint64_t m_driverLength;            /* size of the embedded device driver (currently unused) */
 
         // Extra debug information for hardware and hardware emulation debug
-        // Note that this segment has been obsoleted
+
         uint64_t m_dwarfOffset ;
         uint64_t m_dwarfLength ;
         uint64_t m_ipiMappingOffset ;
         uint64_t m_ipiMappingLength ;
     };
 
-
-    /*  AXLF is successor to xclbin0
-     *
+    /*
      *  AXLF LAYOUT
      *  -----------
      *
@@ -104,6 +104,7 @@ extern "C" {
         uint32_t m_mode;                    /* XCLBIN_MODE */
         uint64_t m_platformId;              /* 64 bit platform ID: vendor-device-subvendor-subdev */
         uint64_t m_featureId;               /* 64 bit feature id */
+        unsigned char m_platformVBNV[64];   /* e.g. xilinx:xil-accel-rd-ku115:4ddr-xpr:3.4: null terminated */
         char m_next_axlf[16];               /* Name of next xclbin file in the daisy chain */
         char m_debug_bin[16];               /* Name of binary with debug information */
         uint32_t m_numSections;             /* Number of section headers */
@@ -137,11 +138,8 @@ extern "C" {
     }
 # endif
 
-
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-
-// XSIP watermark, do not delete 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689
