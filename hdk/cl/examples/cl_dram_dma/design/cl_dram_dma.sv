@@ -229,7 +229,7 @@ assign sh_cl_dma_pcis_bus.wvalid = sh_cl_dma_pcis_wvalid;
 assign sh_cl_dma_pcis_bus.wdata = sh_cl_dma_pcis_wdata;
 assign sh_cl_dma_pcis_bus.wstrb = sh_cl_dma_pcis_wstrb;
 assign sh_cl_dma_pcis_bus.wlast = sh_cl_dma_pcis_wlast;
-assign cl_sh_dma_pcis_wready = sh_cl_dma_pcis_bus.wready;
+// assign cl_sh_dma_pcis_wready = sh_cl_dma_pcis_bus.wready;
 assign cl_sh_dma_pcis_bvalid = sh_cl_dma_pcis_bus.bvalid;
 assign cl_sh_dma_pcis_bresp = sh_cl_dma_pcis_bus.bresp;
 assign sh_cl_dma_pcis_bus.bready = sh_cl_dma_pcis_bready;
@@ -276,6 +276,20 @@ assign cl_sh_ddr_bus.rdata = sh_cl_ddr_rdata;
 assign cl_sh_ddr_bus.rlast = sh_cl_ddr_rlast;
 assign cl_sh_ddr_rready = cl_sh_ddr_bus.rready;
 
+logic sorting_network_sync_rst_n;
+lib_pipe #(.WIDTH(1), .STAGES(4)) DMA_PCIS_SLV_SLC_RST_N (.clk(clk), .rst_n(1'b1), .in_bus(sync_rst_n), .out_bus(sorting_network_sync_rst_n));
+SortingNetwork network(
+  .clock(clk),
+  .reset(sorting_network_sync_rst_n),
+  .io_blockValid(sh_cl_dma_pcis_wvalid),
+  .io_block(sh_cl_dma_pcis_wdata[63:0]),
+  .io_downstreamReady(sh_cl_pcim_wready),
+  .io_thisReady(cl_sh_dma_pcis_wready),
+  .io_outValid(cl_sh_pcim_wvalid),
+  .io_out(cl_sh_pcim_wdata[63:0])
+);
+
+
 logic dma_pcis_slv_sync_rst_n;
 lib_pipe #(.WIDTH(1), .STAGES(4)) DMA_PCIS_SLV_SLC_RST_N (.clk(clk), .rst_n(1'b1), .in_bus(sync_rst_n), .out_bus(dma_pcis_slv_sync_rst_n));
 cl_dma_pcis_slv #(.SCRB_BURST_LEN_MINUS1(DDR_SCRB_BURST_LEN_MINUS1),
@@ -319,10 +333,10 @@ assign cl_sh_pcim_awlen = cl_sh_pcim_bus.awlen;
 assign cl_sh_pcim_awvalid = cl_sh_pcim_bus.awvalid;
 assign cl_sh_pcim_awsize = cl_sh_pcim_bus.awsize;
 assign cl_sh_pcim_bus.awready = sh_cl_pcim_awready;
-assign cl_sh_pcim_wdata = cl_sh_pcim_bus.wdata;
+assign cl_sh_pcim_wdata[511:64] = cl_sh_pcim_bus.wdata[511:64];
 assign cl_sh_pcim_wstrb = cl_sh_pcim_bus.wstrb;
 assign cl_sh_pcim_wlast = cl_sh_pcim_bus.wlast;
-assign cl_sh_pcim_wvalid = cl_sh_pcim_bus.wvalid;
+// assign cl_sh_pcim_wvalid = cl_sh_pcim_bus.wvalid;
 assign cl_sh_pcim_bus.wready = sh_cl_pcim_wready;
 assign cl_sh_pcim_bus.bid = sh_cl_pcim_bid;
 assign cl_sh_pcim_bus.bresp = sh_cl_pcim_bresp;
