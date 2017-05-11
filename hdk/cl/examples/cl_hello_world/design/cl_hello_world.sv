@@ -159,6 +159,7 @@ always_ff @(negedge rst_main_n or posedge clk_main_a0)
 //--------------------------------------------------------------
 // Only supports single-beat accesses.
 
+/*
    logic        awvalid;
    logic [31:0] awaddr;
    logic        wvalid;
@@ -263,6 +264,22 @@ always_ff @(posedge clk_main_a0)
                                                       `UNIMPLEMENTED_REG_VALUE        ;
       rresp  <= 0;
    end
+*/
+
+logic [63:0] data_out;
+// fpga_pci_poke64
+// fpga_pci_write_burst
+SortingNetwork network(
+  .clock(clk_main_a0),
+  .reset(!rst_main_n_sync),
+  .io_blockValid(sh_ocl_wvalid_q),
+  .io_block({32'b0, sh_ocl_wdata_q}),
+  .io_downstreamReady(sh_ocl_rready_q),
+  .io_thisReady(ocl_sh_wready_q),
+  .io_outValid(ocl_sh_rvalid_q),
+  .io_out(data_out)
+);
+assign ocl_sh_rdata_q = data_out[31:0];
 
 //-------------------------------------------------
 // Hello World Register
