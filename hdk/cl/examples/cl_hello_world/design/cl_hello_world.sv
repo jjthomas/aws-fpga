@@ -281,6 +281,31 @@ SortingNetwork network(
 );
 assign ocl_sh_rdata_q = data_out[31:0];
 
+assign ocl_sh_awready_q = 1;
+// assign ocl_sh_wready_q  = wready;
+// assign ocl_sh_bvalid_q  = bvalid;
+// assign ocl_sh_bresp_q   = bresp[1:0];
+assign ocl_sh_arready_q = 1;
+// assign ocl_sh_rvalid_q  = rvalid;
+// assign ocl_sh_rdata_q   = rdata;
+assign ocl_sh_rresp_q   = 0;
+
+/*
+// Write Response
+logic bvalid;
+always_ff @(posedge clk_main_a0)
+  if (!rst_main_n_sync) 
+    bvalid <= 0;
+  else
+    bvalid <=  bvalid &&  sh_ocl_bready_q  ? 1'b0  : 
+                         ~bvalid && ocl_sh_wready_q ? 1'b1  :
+                                             bvalid;
+assign ocl_sh_bvalid_q  = bvalid;
+*/
+assign ocl_sh_bvalid_q  = 1;
+assign ocl_sh_bresp_q = 0;
+
+/*
 //-------------------------------------------------
 // Hello World Register
 //-------------------------------------------------
@@ -299,6 +324,7 @@ always_ff @(posedge clk_main_a0)
 
 assign hello_world_q_byte_swapped[31:0] = {hello_world_q[7:0],   hello_world_q[15:8],
                                            hello_world_q[23:16], hello_world_q[31:24]};
+*/
 
 //-------------------------------------------------
 // Virtual LED Register

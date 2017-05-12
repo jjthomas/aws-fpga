@@ -37,17 +37,21 @@ logic [15:0] vled_value;
 
       $display ("value of vdip:%0x", vdip_value);
 
-      $display ("Writing 0xDEAD_BEEF to address 0x%x", `HELLO_WORLD_REG_ADDR);
-      tb.poke(.addr(`HELLO_WORLD_REG_ADDR), .data(32'hDEAD_BEEF), .id(AXI_ID), .size(DataSize::UINT16), .intf(AxiPort::PORT_OCL)); // write register
+      $display ("Writing to address 0x%x", `HELLO_WORLD_REG_ADDR);
+      tb.poke(.addr(`HELLO_WORLD_REG_ADDR), .data(32'h0000_0001), .id(AXI_ID), .size(DataSize::UINT16), .intf(AxiPort::PORT_OCL)); // write register
+      $display ("Write 1");
+      tb.poke(.addr(`HELLO_WORLD_REG_ADDR), .data(32'h0000_0002), .id(AXI_ID), .size(DataSize::UINT16), .intf(AxiPort::PORT_OCL)); // write register
+      $display ("Write 2");
 
       tb.peek(.addr(`HELLO_WORLD_REG_ADDR), .data(rdata), .id(AXI_ID), .size(DataSize::UINT16), .intf(AxiPort::PORT_OCL));         // start read & write
       $display ("Reading 0x%x from address 0x%x", rdata, `HELLO_WORLD_REG_ADDR);
 
-      if (rdata == 32'hEFBE_ADDE) // Check for byte swap in register read
+      if (rdata == 32'h0000_0001)
         $display ("Test PASSED");
       else
         $display ("Test FAILED");
 
+      /*
       tb.peek_ocl(.addr(`VLED_REG_ADDR), .data(rdata));         // start read
       $display ("Reading 0x%x from address 0x%x", rdata, `VLED_REG_ADDR);
 
@@ -59,6 +63,7 @@ logic [15:0] vled_value;
       vled_value = tb.get_virtual_led();
 
       $display ("value of vled:%0x", vled_value);
+      */
 
       tb.kernel_reset();
 
