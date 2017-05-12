@@ -92,10 +92,7 @@ timestamp=$(date +"%y_%m_%d-%H%M%S")
 mkdir to_aws
 
 #split xcp file
-$XILINX_SDX/runtime/bin/xclbinsplit -o ${kernel} xclbin/krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.xclbin
-
-#OLD LOCATION of XCP file
-#$XILINX_SDX/runtime/bin/xclbinsplit -o ${kernel} _xocc_link_krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3_krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.dir/impl/build/system/krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3/bitstream/krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.xcp
+$XILINX_SDX/runtime/bin/xclbinsplit -o ${kernel} xclbin/krnl_${kernel}.hw.xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0.xclbin
 
 #rename .bit to .dcp
 mv ${kernel}-primary.bit to_aws/${kernel}_${timestamp}_SH_CL_routed.dcp
@@ -181,6 +178,6 @@ exec 3>&-
 tar -cf ${kernel}_${timestamp}_Developer_CL.tar to_aws/${kernel}_${timestamp}_SH_CL_routed.dcp to_aws/${kernel}_${timestamp}_manifest.txt
 
 #Create .awsxclbin
-cat ${kernel}-meta.xml >> ${kernel}_${timestamp}.awsxclbin
+cat ${kernel}-xclbin.xml >> ${kernel}_${timestamp}.awsxclbin
 echo ${kernel}_afi_id.txt >> ${kernel}_${timestamp}.awsxclbin
   

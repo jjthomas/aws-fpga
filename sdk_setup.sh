@@ -15,7 +15,7 @@
 # permissions and limitations under the License.
 #
 
-export SDK_DIR=${SDK_DIR:=$(pwd)/sdk}
+export SDK_DIR=$(pwd)/sdk
 
 echo "Done setting environment variables."
 git submodule update --init -- sdk/SDAccel/examples/xilinx

@@ -107,7 +107,7 @@ echo "Done setting environment variables."
 dsa_dir=$SDK_DIR/SDAccel/aws_platform/xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0/hw/
 sdk_dsa=$dsa_dir/xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0.dsa
 sdk_dsa_s3_bucket=aws-fpga-hdk-resources
-s3_sdk_dsa=$sdk_dsa_s3_bucket/sdk/SDAccel/dsa_v04151701/xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0/xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0.dsa
+s3_sdk_dsa=$sdk_dsa_s3_bucket/sdk/SDAccel/dsa_v04151701_FIX0508/xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0/xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0.dsa
 # Download the sha256
 if [ ! -e $dsa_dir ]; then
 	mkdir -p $dsa_dir || { err_msg "Failed to create $dsa_dir"; return 2; }
