@@ -247,6 +247,8 @@ assign cl_sh_dma_pcis_rresp = sh_cl_dma_pcis_bus.rresp;
 assign cl_sh_dma_pcis_rdata = sh_cl_dma_pcis_bus.rdata;
 assign sh_cl_dma_pcis_bus.rready = sh_cl_dma_pcis_rready;
 
+logic sorting_network_ready;
+
 assign cl_sh_ddr_awid = cl_sh_ddr_bus.awid;
 assign cl_sh_ddr_awaddr = cl_sh_ddr_bus.awaddr;
 assign cl_sh_ddr_awlen = cl_sh_ddr_bus.awlen;
@@ -258,7 +260,7 @@ assign cl_sh_ddr_wdata = cl_sh_ddr_bus.wdata;
 assign cl_sh_ddr_wstrb = cl_sh_ddr_bus.wstrb;
 assign cl_sh_ddr_wlast = cl_sh_ddr_bus.wlast;
 assign cl_sh_ddr_wvalid = cl_sh_ddr_bus.wvalid;
-assign cl_sh_ddr_bus.wready = sh_cl_ddr_wready;
+assign cl_sh_ddr_bus.wready = sh_cl_ddr_wready && sorting_network_ready;
 assign cl_sh_ddr_bus.bid = sh_cl_ddr_bid;
 assign cl_sh_ddr_bus.bresp = sh_cl_ddr_bresp;
 assign cl_sh_ddr_bus.bvalid = sh_cl_ddr_bvalid;
@@ -271,8 +273,8 @@ assign cl_sh_ddr_arvalid = cl_sh_ddr_bus.arvalid;
 assign cl_sh_ddr_bus.arready = sh_cl_ddr_arready;
 assign cl_sh_ddr_bus.rid = sh_cl_ddr_rid;
 assign cl_sh_ddr_bus.rresp = sh_cl_ddr_rresp;
-assign cl_sh_ddr_bus.rvalid = sh_cl_ddr_rvalid;
-assign cl_sh_ddr_bus.rdata = sh_cl_ddr_rdata;
+// assign cl_sh_ddr_bus.rvalid = sh_cl_ddr_rvalid;
+assign cl_sh_ddr_bus.rdata[511:64] = sh_cl_ddr_rdata[511:64];
 assign cl_sh_ddr_bus.rlast = sh_cl_ddr_rlast;
 assign cl_sh_ddr_rready = cl_sh_ddr_bus.rready;
 
@@ -281,12 +283,12 @@ lib_pipe #(.WIDTH(1), .STAGES(4)) DMA_PCIS_SLV_SLC_RST_N (.clk(clk), .rst_n(1'b1
 SortingNetwork network(
   .clock(clk),
   .reset(sorting_network_sync_rst_n),
-  .io_blockValid(sh_cl_dma_pcis_wvalid),
-  .io_block(sh_cl_dma_pcis_wdata[63:0]),
-  .io_downstreamReady(sh_cl_pcim_wready),
-  .io_thisReady(cl_sh_dma_pcis_wready),
-  .io_outValid(cl_sh_pcim_wvalid),
-  .io_out(cl_sh_pcim_wdata[63:0])
+  .io_blockValid(cl_sh_ddr_wvalid),
+  .io_block(cl_sh_ddr_wdata[63:0]),
+  .io_downstreamReady(cl_sh_ddr_bus.rready),
+  .io_thisReady(sorting_network_ready),
+  .io_outValid(cl_sh_ddr_bus.rvalid),
+  .io_out(cl_sh_ddr_bus.rdata[63:0])
 );
 
 

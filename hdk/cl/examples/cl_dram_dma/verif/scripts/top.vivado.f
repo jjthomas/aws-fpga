@@ -62,6 +62,7 @@ ${CL_ROOT}/design/cl_int_slv.sv
 ${CL_ROOT}/design/cl_ocl_slv.sv
 ${CL_ROOT}/design/cl_sda_slv.sv
 ${CL_ROOT}/design/cl_dram_dma.sv
+${CL_ROOT}/design/sorting_network.v
 
 -f ${HDK_COMMON_DIR}/verif/tb/filelists/tb.${SIMULATOR}.f
 
