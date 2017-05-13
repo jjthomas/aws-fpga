@@ -40,7 +40,7 @@ logic rst_main_n_sync;
 `include "unused_ddr_a_b_d_template.inc"
 `include "unused_ddr_c_template.inc"
 `include "unused_pcim_template.inc"
-`include "unused_dma_pcis_template.inc"
+// `include "unused_dma_pcis_template.inc"
 `include "unused_cl_sda_template.inc"
 `include "unused_sh_bar1_template.inc"
 `include "unused_apppf_irq_template.inc"
@@ -272,23 +272,42 @@ logic [63:0] data_out;
 SortingNetwork network(
   .clock(clk_main_a0),
   .reset(!rst_main_n_sync),
-  .io_blockValid(sh_ocl_wvalid_q),
-  .io_block({32'b0, sh_ocl_wdata_q}),
-  .io_downstreamReady(sh_ocl_rready_q),
-  .io_thisReady(ocl_sh_wready_q),
-  .io_outValid(ocl_sh_rvalid_q),
-  .io_out(data_out)
+  .io_blockValid(sh_cl_dma_pcis_wvalid),
+  .io_block(sh_cl_dma_pcis_wdata[63:0]),
+  .io_downstreamReady(sh_cl_dma_pcis_rready),
+  .io_thisReady(cl_sh_dma_pcis_wready),
+  .io_outValid(cl_sh_dma_pcis_rvalid),
+  .io_out(cl_sh_dma_pcis_rdata[63:0])
 );
-assign ocl_sh_rdata_q = data_out[31:0];
+assign cl_sh_dma_pcis_rdata[511:64] = 0;
 
-assign ocl_sh_awready_q = 1;
-// assign ocl_sh_wready_q  = wready;
-// assign ocl_sh_bvalid_q  = bvalid;
-// assign ocl_sh_bresp_q   = bresp[1:0];
-assign ocl_sh_arready_q = 1;
-// assign ocl_sh_rvalid_q  = rvalid;
-// assign ocl_sh_rdata_q   = rdata;
-assign ocl_sh_rresp_q   = 0;
+// assign sh_cl_dma_pcis_bus.awvalid = sh_cl_dma_pcis_awvalid;
+// assign sh_cl_dma_pcis_bus.awaddr = sh_cl_dma_pcis_awaddr;
+// assign sh_cl_dma_pcis_bus.awid[5:0] = sh_cl_dma_pcis_awid;
+// assign sh_cl_dma_pcis_bus.awlen = sh_cl_dma_pcis_awlen;
+// assign sh_cl_dma_pcis_bus.awsize = sh_cl_dma_pcis_awsize;
+assign cl_sh_dma_pcis_awready = 1;
+// assign sh_cl_dma_pcis_bus.wvalid = sh_cl_dma_pcis_wvalid;
+// assign sh_cl_dma_pcis_bus.wdata = sh_cl_dma_pcis_wdata;
+// assign sh_cl_dma_pcis_bus.wstrb = sh_cl_dma_pcis_wstrb;
+// assign sh_cl_dma_pcis_bus.wlast = sh_cl_dma_pcis_wlast;
+// assign cl_sh_dma_pcis_wready = sh_cl_dma_pcis_bus.wready;
+assign cl_sh_dma_pcis_bvalid = 1;
+assign cl_sh_dma_pcis_bresp = 0;
+// assign sh_cl_dma_pcis_bus.bready = sh_cl_dma_pcis_bready;
+assign cl_sh_dma_pcis_bid = 0;
+// assign sh_cl_dma_pcis_bus.arvalid = sh_cl_dma_pcis_arvalid;
+// assign sh_cl_dma_pcis_bus.araddr = sh_cl_dma_pcis_araddr;
+// assign sh_cl_dma_pcis_bus.arid[5:0] = sh_cl_dma_pcis_arid;
+// assign sh_cl_dma_pcis_bus.arlen = sh_cl_dma_pcis_arlen;
+// assign sh_cl_dma_pcis_bus.arsize = sh_cl_dma_pcis_arsize;
+assign cl_sh_dma_pcis_arready = 1;
+// assign cl_sh_dma_pcis_rvalid = sh_cl_dma_pcis_bus.rvalid;
+assign cl_sh_dma_pcis_rid = 0;
+assign cl_sh_dma_pcis_rlast = 1;
+assign cl_sh_dma_pcis_rresp = 0;
+// assign cl_sh_dma_pcis_rdata = sh_cl_dma_pcis_bus.rdata;
+// assign sh_cl_dma_pcis_bus.rready = sh_cl_dma_pcis_rready;
 
 /*
 // Write Response
@@ -302,8 +321,6 @@ always_ff @(posedge clk_main_a0)
                                              bvalid;
 assign ocl_sh_bvalid_q  = bvalid;
 */
-assign ocl_sh_bvalid_q  = 1;
-assign ocl_sh_bresp_q = 0;
 
 /*
 //-------------------------------------------------
