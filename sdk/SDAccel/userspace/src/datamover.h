@@ -44,12 +44,21 @@
 namespace awsbwhal {
     class DMAChannelManager
     {
+#if defined(AWS_EDMA)
+        static constexpr char dmapathname[] = "/dev/edma";
+        static constexpr char dmapathh2c[] = "_queue_";
+        static constexpr char dmapathc2h[] = "_queue_";
+#else
+        static constexpr char dmapathname[] = "/dev/xdma";
+        static constexpr char dmapathh2c[] = "_h2c_";
+        static constexpr char dmapathc2h[] = "_c2h_";
+#endif
     public:
         DMAChannelManager(unsigned deviceIndex, unsigned count, std::ios_base::openmode mode) : mCount(count) {
-            std::string baseName("/dev/xdma");
+            std::string baseName(dmapathname);
             baseName += std::to_string(deviceIndex);
             assert((mode == std::ios_base::in) || (mode == std::ios_base::out));
-            const char *suffix = (mode == std::ios_base::out) ? "_h2c_" : "_c2h_";
+            const char *suffix = (mode == std::ios_base::out) ? dmapathh2c : dmapathc2h;
             baseName += suffix;
             for (mIndex = 0; mIndex < static_cast<int>(mCount); ++mIndex) {
                 std::string fileName(baseName);

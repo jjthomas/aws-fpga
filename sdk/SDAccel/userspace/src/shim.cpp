@@ -455,7 +455,6 @@ namespace awsbwhal {
     {
         int slot_id = mBoardNumber;
         mDataMover = new DataMover(mBoardNumber, 4 /* 1 channel each dir */);
-// FIXME: need to revisit and change number of channels
 
 #ifdef INTERNAL_TESTING
         char file_name_buf[128];
