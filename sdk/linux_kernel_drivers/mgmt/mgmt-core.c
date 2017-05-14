@@ -199,8 +199,7 @@ static long char_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		printk(KERN_INFO "mgmgt axlf ioctl called. \n");
 		return bitstream_ioctl_axlf(lro, (void __user *)arg);
 	case AWSMGMT_IOCFREQSCALING:
-		return 0;
-		//return ocl_freqscaling_ioctl(lro, (void __user *)arg);
+		return ocl_freqscaling_ioctl(lro, (void __user *)arg);
 	default:
 		return -ENOTTY;
 	}
