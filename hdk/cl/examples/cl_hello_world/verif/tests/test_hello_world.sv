@@ -21,7 +21,7 @@ module test_dram_dma();
     int            error_count;
     int            timeout_count;
     int            fail;
-    logic [3:0]    status;
+    logic    status;
     int            len0 = 128;
     int            len1 = 128;
     int            len2 = 6000;
@@ -97,20 +97,20 @@ module test_dram_dma();
        
        //Start transfers of data to CL DDR
        tb.start_que_to_cl(.chan(0));   
-       tb.start_que_to_cl(.chan(1));   
-       tb.start_que_to_cl(.chan(2));   
-       tb.start_que_to_cl(.chan(3));   
+       // tb.start_que_to_cl(.chan(1));   
+       // tb.start_que_to_cl(.chan(2));   
+       // tb.start_que_to_cl(.chan(3));   
 
        // wait for dma transfers to complete
        timeout_count = 0;       
        do begin
-          status[0] = tb.is_dma_to_cl_done(.chan(0));
-          status[1] = tb.is_dma_to_cl_done(.chan(1));
-          status[2] = tb.is_dma_to_cl_done(.chan(2));
-          status[3] = tb.is_dma_to_cl_done(.chan(3));
+          status = tb.is_dma_to_cl_done(.chan(0));
+          // status[1] = tb.is_dma_to_cl_done(.chan(1));
+          // status[2] = tb.is_dma_to_cl_done(.chan(2));
+          // status[3] = tb.is_dma_to_cl_done(.chan(3));
           #10ns;
           timeout_count++;
-       end while ((status != 4'hf) && (timeout_count < 500));
+       end while ((status != 1'b1) && (timeout_count < 500));
        
        if (timeout_count >= 500) begin
           $display("[%t] : *** ERROR *** Timeout waiting for dma transfers from cl", $realtime);
@@ -121,14 +121,15 @@ module test_dram_dma();
 
        //Start transfers of data from CL DDR
        tb.start_que_to_buffer(.chan(0));   
-       tb.start_que_to_buffer(.chan(1));   
-       tb.start_que_to_buffer(.chan(2));   
-       tb.start_que_to_buffer(.chan(3));   
+       // tb.start_que_to_buffer(.chan(1));   
+       // tb.start_que_to_buffer(.chan(2));   
+       // tb.start_que_to_buffer(.chan(3));   
 
        // read the data from cl and put it in the host memory 
        host_memory_buffer_address = 64'h0_0001_0800;
        tb.que_cl_to_buffer(.chan(0), .dst_addr(host_memory_buffer_address), .cl_addr(64'h0000_0000_0002), .len(len0) );  // move DDR0 to buffer
                                                                                                                                             
+       /*
        host_memory_buffer_address = 64'h0_0002_1800;                                                                                        
        tb.que_cl_to_buffer(.chan(1), .dst_addr(host_memory_buffer_address), .cl_addr(64'h0000_1000_0000), .len(len1) );  // move DDR1 to buffer
                                                                                                                                             
@@ -137,17 +138,18 @@ module test_dram_dma();
                                                                                                                                             
        host_memory_buffer_address = 64'h0_0004_3800;                                                                                        
        tb.que_cl_to_buffer(.chan(3), .dst_addr(host_memory_buffer_address), .cl_addr(64'h0000_3000_0000), .len(len3) );  // move DDR3 to buffer
+       */
        
        // wait for dma transfers to complete
        timeout_count = 0;       
        do begin
-          status[0] = tb.is_dma_to_buffer_done(.chan(0));
-          status[1] = tb.is_dma_to_buffer_done(.chan(1));
-          status[2] = tb.is_dma_to_buffer_done(.chan(2));
-          status[3] = tb.is_dma_to_buffer_done(.chan(3));
+          status = tb.is_dma_to_buffer_done(.chan(0));
+          // status[1] = tb.is_dma_to_buffer_done(.chan(1));
+          // status[2] = tb.is_dma_to_buffer_done(.chan(2));
+          // status[3] = tb.is_dma_to_buffer_done(.chan(3));
           #10ns;
           timeout_count++;          
-       end while ((status != 4'hf) && (timeout_count < 500));
+       end while ((status != 1'b1) && (timeout_count < 500));
        
        if (timeout_count >= 500) begin
           $display("[%t] : *** ERROR *** Timeout waiting for dma transfers from cl", $realtime);
@@ -168,6 +170,7 @@ module test_dram_dma();
          end    
        end
        
+       /*
        // DDR 1
        // Compare the data in host memory with the expected data
        $display("[%t] : DMA buffer from DDR 1", $realtime);
@@ -206,6 +209,7 @@ module test_dram_dma();
            error_count++;
          end    
        end
+       */
 
        
        // Power down
