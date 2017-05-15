@@ -14,9 +14,10 @@
 // limitations under the License.
 
 
-module test_dram_dma();
+module test_hello_world();
 
    import tb_type_defines_pkg::*;
+   `include "cl_common_defines.vh"
    
     int            error_count;
     int            timeout_count;
@@ -37,16 +38,16 @@ module test_dram_dma();
                    .clk_recipe_c(ClockRecipe::C0));
 
        tb.nsec_delay(500);
-       tb.poke_stat(.addr(8'h0c), .ddr_idx(0), .data(32'h0000_0000));
-       tb.poke_stat(.addr(8'h0c), .ddr_idx(1), .data(32'h0000_0000));
-       tb.poke_stat(.addr(8'h0c), .ddr_idx(2), .data(32'h0000_0000));
+       // tb.poke_stat(.addr(8'h0c), .ddr_idx(0), .data(32'h0000_0000));
+       // tb.poke_stat(.addr(8'h0c), .ddr_idx(1), .data(32'h0000_0000));
+       // tb.poke_stat(.addr(8'h0c), .ddr_idx(2), .data(32'h0000_0000));
 
        // de-select the ATG hardware
        
-       tb.poke_ocl(.addr(64'h130), .data(0));
-       tb.poke_ocl(.addr(64'h230), .data(0));
-       tb.poke_ocl(.addr(64'h330), .data(0));
-       tb.poke_ocl(.addr(64'h430), .data(0));
+       // tb.poke_ocl(.addr(64'h130), .data(0));
+       // tb.poke_ocl(.addr(64'h230), .data(0));
+       // tb.poke_ocl(.addr(64'h330), .data(0));
+       // tb.poke_ocl(.addr(64'h430), .data(0));
 
        // allow memory to initialize
        tb.nsec_delay(25000);
