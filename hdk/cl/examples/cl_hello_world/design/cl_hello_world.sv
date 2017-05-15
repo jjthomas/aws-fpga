@@ -36,7 +36,7 @@ logic rst_main_n_sync;
 // to avoid cases where developer may forget to
 // remove it from the end of the file
 
-`include "unused_flr_template.inc"
+// `include "unused_flr_template.inc"
 `include "unused_ddr_a_b_d_template.inc"
 `include "unused_ddr_c_template.inc"
 `include "unused_pcim_template.inc"
@@ -281,6 +281,17 @@ SortingNetwork network(
 );
 assign cl_sh_dma_pcis_rdata[511:64] = 0;
 
+/*
+always_ff @(posedge clk_main_a0) begin
+  $display ("InValid 0x%x...", sh_cl_dma_pcis_wvalid);
+  $display ("InData 0x%x...", sh_cl_dma_pcis_wdata);
+  $display ("InData[63:0] 0x%x...", sh_cl_dma_pcis_wdata[63:0]);
+  $display ("OutValid 0x%x...", cl_sh_dma_pcis_rvalid);
+  $display ("OutData 0x%x...", cl_sh_dma_pcis_rdata);
+  $display ("OutData[63:0] 0x%x...", cl_sh_dma_pcis_rdata[63:0]);
+end
+*/
+
 // assign sh_cl_dma_pcis_bus.awvalid = sh_cl_dma_pcis_awvalid;
 // assign sh_cl_dma_pcis_bus.awaddr = sh_cl_dma_pcis_awaddr;
 // assign sh_cl_dma_pcis_bus.awid[5:0] = sh_cl_dma_pcis_awid;
@@ -308,6 +319,8 @@ assign cl_sh_dma_pcis_rlast = 1;
 assign cl_sh_dma_pcis_rresp = 0;
 // assign cl_sh_dma_pcis_rdata = sh_cl_dma_pcis_bus.rdata;
 // assign sh_cl_dma_pcis_bus.rready = sh_cl_dma_pcis_rready;
+
+assign cl_sh_flr_done = 1;
 
 /*
 // Write Response
