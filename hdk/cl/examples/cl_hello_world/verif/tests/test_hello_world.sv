@@ -18,7 +18,8 @@ module test_hello_world();
 
 import tb_type_defines_pkg::*;
 
-logic [511:0] rdata;
+logic [511:0] rdata1;
+logic [511:0] rdata2;
 
    initial begin
       tb.power_up();
@@ -26,13 +27,15 @@ logic [511:0] rdata;
       $display ("Writing begins...");
       tb.poke_pcis(.addr(64'b0), .data(512'b1), .strb(64'hffff_ffff_ffff_ffff));
       $display ("Write 1 complete...");
-      tb.poke_pcis(.addr(64'b0), .data(512'b1), .strb(64'hffff_ffff_ffff_ffff));
+      tb.poke_pcis(.addr(64'b0), .data(512'b0), .strb(64'hffff_ffff_ffff_ffff));
       $display ("Write 2 complete...");
 
-      tb.peek_pcis(.addr(64'b0), .data(rdata));
-      $display ("Read 0x%x...", rdata);
+      tb.peek_pcis(.addr(64'b0), .data(rdata1));
+      $display ("Read 1 0x%x...", rdata1);
+      tb.peek_pcis(.addr(64'b0), .data(rdata2));
+      $display ("Read 2 0x%x...", rdata2);
 
-      if (rdata[63:0] == 64'b1)
+      if (rdata1[63:0] == 64'b0 && rdata2[63:0] == 64'b1)
         $display ("Test PASSED");
       else
         $display ("Test FAILED");
