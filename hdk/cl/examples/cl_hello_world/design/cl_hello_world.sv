@@ -281,16 +281,19 @@ SortingNetwork network(
 );
 assign cl_sh_dma_pcis_rdata[511:64] = 0;
 
-/*
 always_ff @(posedge clk_main_a0) begin
+  /*
   $display ("InValid 0x%x...", sh_cl_dma_pcis_wvalid);
   $display ("InData 0x%x...", sh_cl_dma_pcis_wdata);
   $display ("InData[63:0] 0x%x...", sh_cl_dma_pcis_wdata[63:0]);
   $display ("OutValid 0x%x...", cl_sh_dma_pcis_rvalid);
   $display ("OutData 0x%x...", cl_sh_dma_pcis_rdata);
   $display ("OutData[63:0] 0x%x...", cl_sh_dma_pcis_rdata[63:0]);
+  */
+  if (sh_cl_dma_pcis_arvalid) begin
+    $display ("Address size/len 0x%x/0x%x...", sh_cl_dma_pcis_arsize, sh_cl_dma_pcis_arlen);
+  end
 end
-*/
 
 // assign sh_cl_dma_pcis_bus.awvalid = sh_cl_dma_pcis_awvalid;
 // assign sh_cl_dma_pcis_bus.awaddr = sh_cl_dma_pcis_awaddr;
@@ -315,7 +318,7 @@ assign cl_sh_dma_pcis_bid = 0;
 assign cl_sh_dma_pcis_arready = 1;
 // assign cl_sh_dma_pcis_rvalid = sh_cl_dma_pcis_bus.rvalid;
 assign cl_sh_dma_pcis_rid = 0;
-assign cl_sh_dma_pcis_rlast = 1;
+assign cl_sh_dma_pcis_rlast = 0;
 assign cl_sh_dma_pcis_rresp = 0;
 // assign cl_sh_dma_pcis_rdata = sh_cl_dma_pcis_bus.rdata;
 // assign sh_cl_dma_pcis_bus.rready = sh_cl_dma_pcis_rready;

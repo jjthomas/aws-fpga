@@ -80,7 +80,7 @@ module test_hello_world();
 
        // read the data from cl and put it in the host memory 
        host_memory_buffer_address = 64'h0_0001_0800;
-       tb.que_cl_to_buffer(.chan(0), .dst_addr(host_memory_buffer_address), .cl_addr(64'h0), .len(len0 + 128) );  // move DDR0 to buffer
+       tb.que_cl_to_buffer(.chan(0), .dst_addr(host_memory_buffer_address), .cl_addr(64'h0), .len(len0 + 16384) );  // move DDR0 to buffer
                                                                                                                                             
        // wait for dma transfers to complete
        timeout_count = 0;       
@@ -101,7 +101,7 @@ module test_hello_world();
        $display("[%t] : DMA buffer from DDR 0", $realtime);
 
        host_memory_buffer_address = 64'h0_0001_0800;
-       for (int i = 64 ; i<len0+128 ; i+=64) begin
+       for (int i = 0 ; i<len0+16384 ; i+=64) begin
          for (int j = i ; j<i+8 ; j++) begin
            if (tb.hm_get_byte(.addr(host_memory_buffer_address + j)) !== 8'hAA) begin
              $display("[%t] : *** ERROR *** DDR0 Data mismatch, addr:%0x read data is: %0x", 
