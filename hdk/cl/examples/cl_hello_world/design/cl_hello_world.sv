@@ -267,6 +267,8 @@ always_ff @(posedge clk_main_a0)
 */
 
 logic [63:0] data_out;
+logic network_valid;
+logic ar_sent = 0;
 // fpga_pci_poke64
 // fpga_pci_write_burst
 SortingNetwork network(
@@ -274,9 +276,9 @@ SortingNetwork network(
   .reset(!rst_main_n_sync),
   .io_blockValid(sh_cl_dma_pcis_wvalid),
   .io_block(sh_cl_dma_pcis_wdata[63:0]),
-  .io_downstreamReady(sh_cl_dma_pcis_rready),
+  .io_downstreamReady(sh_cl_dma_pcis_rready && ar_sent),
   .io_thisReady(cl_sh_dma_pcis_wready),
-  .io_outValid(cl_sh_dma_pcis_rvalid),
+  .io_outValid(network_valid),
   .io_out(cl_sh_dma_pcis_rdata[63:0])
 );
 assign cl_sh_dma_pcis_rdata[511:64] = 0;
@@ -289,10 +291,14 @@ always_ff @(posedge clk_main_a0) begin
   $display ("OutValid 0x%x...", cl_sh_dma_pcis_rvalid);
   $display ("OutData 0x%x...", cl_sh_dma_pcis_rdata);
   $display ("OutData[63:0] 0x%x...", cl_sh_dma_pcis_rdata[63:0]);
-  */
   if (sh_cl_dma_pcis_arvalid) begin
     $display ("Address size/len 0x%x/0x%x...", sh_cl_dma_pcis_arsize, sh_cl_dma_pcis_arlen);
+    $display ("Address request 0x%x...", sh_cl_dma_pcis_araddr);
   end
+  if (sh_cl_dma_pcis_rready && cl_sh_dma_pcis_rvalid) begin
+    $display ("rlast 0x%x...", cl_sh_dma_pcis_rlast);
+  end
+  */
 end
 
 // assign sh_cl_dma_pcis_bus.awvalid = sh_cl_dma_pcis_awvalid;
@@ -318,12 +324,31 @@ assign cl_sh_dma_pcis_bid = 0;
 assign cl_sh_dma_pcis_arready = 1;
 // assign cl_sh_dma_pcis_rvalid = sh_cl_dma_pcis_bus.rvalid;
 assign cl_sh_dma_pcis_rid = 0;
-assign cl_sh_dma_pcis_rlast = 0;
 assign cl_sh_dma_pcis_rresp = 0;
 // assign cl_sh_dma_pcis_rdata = sh_cl_dma_pcis_bus.rdata;
 // assign sh_cl_dma_pcis_bus.rready = sh_cl_dma_pcis_rready;
 
 assign cl_sh_flr_done = 1;
+
+logic [7:0] beat_count;
+logic [7:0] arlen;
+assign cl_sh_dma_pcis_rlast = beat_count == arlen;
+assign cl_sh_dma_pcis_rvalid = ar_sent && network_valid;
+always_ff @(posedge clk_main_a0) begin
+  if (sh_cl_dma_pcis_arvalid) begin
+    beat_count <= 0;
+    arlen <= sh_cl_dma_pcis_arlen;
+    ar_sent <= 1;
+  end
+  else if (sh_cl_dma_pcis_rready && cl_sh_dma_pcis_rvalid) begin
+    if (cl_sh_dma_pcis_rlast) begin    
+      ar_sent <= 0; 
+    end
+    else begin
+      beat_count <= beat_count + 1;
+    end
+  end
+end
 
 /*
 // Write Response
