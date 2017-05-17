@@ -281,6 +281,17 @@ SortingNetwork network(
 );
 assign cl_sh_dma_pcis_rdata[511:64] = 0;
 
+/*
+always_ff @(posedge clk_main_a0) begin
+  if (sh_cl_dma_pcis_rready && cl_sh_dma_pcis_rvalid) begin
+    $display ("rdata[63:0] 0x%x", cl_sh_dma_pcis_rdata[63:0]);
+  end
+  if (sh_cl_dma_pcis_arvalid) begin
+    $display ("arlen 0x%x", sh_cl_dma_pcis_arlen);
+  end
+end
+*/
+
 // assign sh_cl_dma_pcis_bus.awvalid = sh_cl_dma_pcis_awvalid;
 // assign sh_cl_dma_pcis_bus.awaddr = sh_cl_dma_pcis_awaddr;
 // assign sh_cl_dma_pcis_bus.awid[5:0] = sh_cl_dma_pcis_awid;
