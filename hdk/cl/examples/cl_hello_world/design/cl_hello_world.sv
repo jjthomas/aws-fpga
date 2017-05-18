@@ -283,19 +283,30 @@ sorter sort(
   .io_out(cl_sh_dma_pcis_rdata)
 );
 
+/*
 always_ff @(posedge clk_main_a0) begin
-  if (sh_cl_dma_pcis_wvalid) begin
+  if (cl_sh_dma_pcis_wready && sh_cl_dma_pcis_wvalid) begin
     $display ("InData 0x%x...", sh_cl_dma_pcis_wdata);
   end
   if (sh_cl_dma_pcis_arvalid && cl_sh_dma_pcis_arready) begin
-    $display ("Address size/len 0x%x/0x%x...", sh_cl_dma_pcis_arsize, sh_cl_dma_pcis_arlen);
-    $display ("Address request 0x%x...", sh_cl_dma_pcis_araddr);
+    $display ("Read address size/len 0x%x/0x%x...", sh_cl_dma_pcis_arsize, sh_cl_dma_pcis_arlen);
+    $display ("Read address request 0x%x...", sh_cl_dma_pcis_araddr);
+  end
+  if (sh_cl_dma_pcis_awvalid && cl_sh_dma_pcis_awready) begin
+    $display ("Write address 0x%x...", sh_cl_dma_pcis_awaddr);
   end
   if (sh_cl_dma_pcis_rready && cl_sh_dma_pcis_rvalid) begin
     $display ("OutData 0x%x...", cl_sh_dma_pcis_rdata);
     $display ("rlast 0x%x...", cl_sh_dma_pcis_rlast);
   end
+  if (cl_sh_dma_pcis_bvalid && sh_cl_dma_pcis_bready) begin
+    $display ("bvalid...");
+  end
+  if (sh_cl_dma_pcis_awvalid && cl_sh_dma_pcis_awready) begin
+    $display ("aw_sent...");
+  end
 end
+*/
 
 // assign sh_cl_dma_pcis_bus.awvalid = sh_cl_dma_pcis_awvalid;
 // assign sh_cl_dma_pcis_bus.awaddr = sh_cl_dma_pcis_awaddr;
@@ -315,7 +326,6 @@ assign cl_sh_dma_pcis_bid = 0;
 // assign sh_cl_dma_pcis_bus.arid[5:0] = sh_cl_dma_pcis_arid;
 // assign sh_cl_dma_pcis_bus.arlen = sh_cl_dma_pcis_arlen;
 // assign sh_cl_dma_pcis_bus.arsize = sh_cl_dma_pcis_arsize;
-assign cl_sh_dma_pcis_arready = ar_sent == 0;
 // assign cl_sh_dma_pcis_rvalid = sh_cl_dma_pcis_bus.rvalid;
 assign cl_sh_dma_pcis_rid = 0;
 assign cl_sh_dma_pcis_rresp = 0;
@@ -326,6 +336,7 @@ assign cl_sh_flr_done = 1;
 
 logic [7:0] beat_count;
 logic [7:0] arlen;
+assign cl_sh_dma_pcis_arready = ar_sent == 0;
 assign cl_sh_dma_pcis_rlast = beat_count == arlen;
 assign cl_sh_dma_pcis_rvalid = ar_sent && network_valid;
 always_ff @(posedge clk_main_a0) begin
@@ -347,7 +358,7 @@ always_ff @(posedge clk_main_a0) begin
   end
 end
 
-logic bvalid;
+logic bvalid = 0;
 assign cl_sh_dma_pcis_awready = aw_sent == 0;
 assign cl_sh_dma_pcis_wready = aw_sent && network_ready;
 assign cl_sh_dma_pcis_bvalid = bvalid;

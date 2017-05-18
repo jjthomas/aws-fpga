@@ -73,6 +73,8 @@ module test_hello_world();
           error_count++;
        end
 
+       tb.nsec_delay(2500);
+
        $display("[%t] : starting C2H DMA channels ", $realtime);
 
        //Start transfers of data from CL DDR
@@ -95,6 +97,7 @@ module test_hello_world();
           error_count++;
        end
 
+       tb.nsec_delay(2500);
 
        // DDR 0
        // Compare the data in host memory with the expected data
