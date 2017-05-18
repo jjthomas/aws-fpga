@@ -271,34 +271,31 @@ logic network_valid;
 logic ar_sent = 0;
 // fpga_pci_poke64
 // fpga_pci_write_burst
-SortingNetwork network(
+sorter sort(
   .clock(clk_main_a0),
   .reset(!rst_main_n_sync),
   .io_blockValid(sh_cl_dma_pcis_wvalid),
-  .io_block(sh_cl_dma_pcis_wdata[63:0]),
+  .io_block(sh_cl_dma_pcis_wdata),
   .io_downstreamReady(sh_cl_dma_pcis_rready && ar_sent),
   .io_thisReady(cl_sh_dma_pcis_wready),
   .io_outValid(network_valid),
-  .io_out(cl_sh_dma_pcis_rdata[63:0])
+  .io_out(cl_sh_dma_pcis_rdata)
 );
-assign cl_sh_dma_pcis_rdata[511:64] = 0;
 
 always_ff @(posedge clk_main_a0) begin
-  /*
-  $display ("InValid 0x%x...", sh_cl_dma_pcis_wvalid);
-  $display ("InData 0x%x...", sh_cl_dma_pcis_wdata);
-  $display ("InData[63:0] 0x%x...", sh_cl_dma_pcis_wdata[63:0]);
-  $display ("OutValid 0x%x...", cl_sh_dma_pcis_rvalid);
-  $display ("OutData 0x%x...", cl_sh_dma_pcis_rdata);
-  $display ("OutData[63:0] 0x%x...", cl_sh_dma_pcis_rdata[63:0]);
-  if (sh_cl_dma_pcis_arvalid) begin
+  if (sh_cl_dma_pcis_wvalid) begin
+    $display ("InData 0x%x...", sh_cl_dma_pcis_wdata);
+    $display ("InData[63:0] 0x%x...", sh_cl_dma_pcis_wdata[63:0]);
+  end
+  if (sh_cl_dma_pcis_arvalid && cl_sh_dma_pcis_arready) begin
     $display ("Address size/len 0x%x/0x%x...", sh_cl_dma_pcis_arsize, sh_cl_dma_pcis_arlen);
     $display ("Address request 0x%x...", sh_cl_dma_pcis_araddr);
   end
   if (sh_cl_dma_pcis_rready && cl_sh_dma_pcis_rvalid) begin
+    $display ("OutData 0x%x...", cl_sh_dma_pcis_rdata);
+    $display ("OutData[63:0] 0x%x...", cl_sh_dma_pcis_rdata[63:0]);
     $display ("rlast 0x%x...", cl_sh_dma_pcis_rlast);
   end
-  */
 end
 
 // assign sh_cl_dma_pcis_bus.awvalid = sh_cl_dma_pcis_awvalid;
@@ -321,7 +318,7 @@ assign cl_sh_dma_pcis_bid = 0;
 // assign sh_cl_dma_pcis_bus.arid[5:0] = sh_cl_dma_pcis_arid;
 // assign sh_cl_dma_pcis_bus.arlen = sh_cl_dma_pcis_arlen;
 // assign sh_cl_dma_pcis_bus.arsize = sh_cl_dma_pcis_arsize;
-assign cl_sh_dma_pcis_arready = 1;
+assign cl_sh_dma_pcis_arready = ar_sent == 0;
 // assign cl_sh_dma_pcis_rvalid = sh_cl_dma_pcis_bus.rvalid;
 assign cl_sh_dma_pcis_rid = 0;
 assign cl_sh_dma_pcis_rresp = 0;
@@ -335,7 +332,10 @@ logic [7:0] arlen;
 assign cl_sh_dma_pcis_rlast = beat_count == arlen;
 assign cl_sh_dma_pcis_rvalid = ar_sent && network_valid;
 always_ff @(posedge clk_main_a0) begin
-  if (sh_cl_dma_pcis_arvalid) begin
+  if (!rst_main_n_sync) begin
+    ar_sent <= 0; 
+  end
+  else if (sh_cl_dma_pcis_arvalid && cl_sh_dma_pcis_arready) begin
     beat_count <= 0;
     arlen <= sh_cl_dma_pcis_arlen;
     ar_sent <= 1;
@@ -353,14 +353,15 @@ end
 /*
 // Write Response
 logic bvalid;
-always_ff @(posedge clk_main_a0)
+always_ff @(posedge clk_main_a0) begin
   if (!rst_main_n_sync) 
     bvalid <= 0;
   else
-    bvalid <=  bvalid &&  sh_ocl_bready_q  ? 1'b0  : 
-                         ~bvalid && ocl_sh_wready_q ? 1'b1  :
+    bvalid <= bvalid && sh_cl_dma_pcis_bready ? 1'b0  : 
+                        ~bvalid && ocl_sh_wready_q ? 1'b1  :
                                              bvalid;
-assign ocl_sh_bvalid_q  = bvalid;
+end
+assign cl_sh_dma_pcis_bvalid = bvalid; 
 */
 
 /*

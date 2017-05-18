@@ -23,7 +23,7 @@ module test_hello_world();
     int            timeout_count;
     int            fail;
     logic    status;
-    int            len0 = 128;
+    int            len0 = 4096;
 
     initial begin
 
@@ -101,13 +101,11 @@ module test_hello_world();
        $display("[%t] : DMA buffer from DDR 0", $realtime);
 
        host_memory_buffer_address = 64'h0_0001_0800;
-       for (int i = 0 ; i<len0; i+=64) begin
-         for (int j = i ; j<i+8 ; j++) begin
-           if (tb.hm_get_byte(.addr(host_memory_buffer_address + j)) !== 8'hAA) begin
-             $display("[%t] : *** ERROR *** DDR0 Data mismatch, addr:%0x read data is: %0x", 
-                              $realtime, (host_memory_buffer_address + j), tb.hm_get_byte(.addr(host_memory_buffer_address + j)));
-             error_count++;
-           end
+       for (int i = 0 ; i<len0; i++) begin
+         if (tb.hm_get_byte(.addr(host_memory_buffer_address + i)) !== 8'hAA) begin
+           $display("[%t] : *** ERROR *** DDR0 Data mismatch, addr:%0x read data is: %0x", 
+                            $realtime, (host_memory_buffer_address + i), tb.hm_get_byte(.addr(host_memory_buffer_address + i)));
+           error_count++;
          end
        end
        
