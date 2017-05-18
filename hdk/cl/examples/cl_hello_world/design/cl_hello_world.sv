@@ -113,6 +113,7 @@ always_ff @(negedge rst_main_n or posedge clk_main_a0)
   logic [ 1:0] ocl_sh_rresp_q;
   logic        sh_ocl_rready_q;
 
+/*
   axi_register_slice_light AXIL_OCL_REG_SLC (
    .aclk          (clk_main_a0),
    .aresetn       (rst_main_n_sync),
@@ -159,7 +160,6 @@ always_ff @(negedge rst_main_n or posedge clk_main_a0)
 //--------------------------------------------------------------
 // Only supports single-beat accesses.
 
-/*
    logic        awvalid;
    logic [31:0] awaddr;
    logic        wvalid;
@@ -268,16 +268,18 @@ always_ff @(posedge clk_main_a0)
 
 logic [63:0] data_out;
 logic network_valid;
+logic network_ready;
 logic ar_sent = 0;
+logic aw_sent = 0;
 // fpga_pci_poke64
 // fpga_pci_write_burst
 sorter sort(
   .clock(clk_main_a0),
   .reset(!rst_main_n_sync),
-  .io_blockValid(sh_cl_dma_pcis_wvalid),
+  .io_blockValid(sh_cl_dma_pcis_wvalid && aw_sent),
   .io_block(sh_cl_dma_pcis_wdata),
   .io_downstreamReady(sh_cl_dma_pcis_rready && ar_sent),
-  .io_thisReady(cl_sh_dma_pcis_wready),
+  .io_thisReady(network_ready),
   .io_outValid(network_valid),
   .io_out(cl_sh_dma_pcis_rdata)
 );
@@ -303,13 +305,11 @@ end
 // assign sh_cl_dma_pcis_bus.awid[5:0] = sh_cl_dma_pcis_awid;
 // assign sh_cl_dma_pcis_bus.awlen = sh_cl_dma_pcis_awlen;
 // assign sh_cl_dma_pcis_bus.awsize = sh_cl_dma_pcis_awsize;
-assign cl_sh_dma_pcis_awready = 1;
 // assign sh_cl_dma_pcis_bus.wvalid = sh_cl_dma_pcis_wvalid;
 // assign sh_cl_dma_pcis_bus.wdata = sh_cl_dma_pcis_wdata;
 // assign sh_cl_dma_pcis_bus.wstrb = sh_cl_dma_pcis_wstrb;
 // assign sh_cl_dma_pcis_bus.wlast = sh_cl_dma_pcis_wlast;
 // assign cl_sh_dma_pcis_wready = sh_cl_dma_pcis_bus.wready;
-assign cl_sh_dma_pcis_bvalid = 1;
 assign cl_sh_dma_pcis_bresp = 0;
 // assign sh_cl_dma_pcis_bus.bready = sh_cl_dma_pcis_bready;
 assign cl_sh_dma_pcis_bid = 0;
@@ -350,19 +350,26 @@ always_ff @(posedge clk_main_a0) begin
   end
 end
 
-/*
-// Write Response
 logic bvalid;
+assign cl_sh_dma_pcis_awready = aw_sent == 0;
+assign cl_sh_dma_pcis_wready = aw_sent && network_ready;
+assign cl_sh_dma_pcis_bvalid = bvalid;
 always_ff @(posedge clk_main_a0) begin
-  if (!rst_main_n_sync) 
-    bvalid <= 0;
-  else
-    bvalid <= bvalid && sh_cl_dma_pcis_bready ? 1'b0  : 
-                        ~bvalid && ocl_sh_wready_q ? 1'b1  :
-                                             bvalid;
+  if (!rst_main_n_sync) begin
+    aw_sent <= 0; 
+  end
+  else if (sh_cl_dma_pcis_awvalid && cl_sh_dma_pcis_awready) begin
+    aw_sent <= 1;
+  end
+  else if (bvalid && sh_cl_dma_pcis_bready) begin
+    aw_sent <= 0;
+  end
+  bvalid <= bvalid && sh_cl_dma_pcis_bready
+            ? 1'b0  : 
+            ~bvalid && cl_sh_dma_pcis_wready && sh_cl_dma_pcis_wvalid && sh_cl_dma_pcis_wlast
+            ? 1'b1  :
+            bvalid;
 end
-assign cl_sh_dma_pcis_bvalid = bvalid; 
-*/
 
 /*
 //-------------------------------------------------
