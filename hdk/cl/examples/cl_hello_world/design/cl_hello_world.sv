@@ -266,7 +266,6 @@ always_ff @(posedge clk_main_a0)
    end
 */
 
-logic [63:0] data_out;
 logic network_valid;
 logic network_ready;
 logic ar_sent = 0;
@@ -287,7 +286,6 @@ sorter sort(
 always_ff @(posedge clk_main_a0) begin
   if (sh_cl_dma_pcis_wvalid) begin
     $display ("InData 0x%x...", sh_cl_dma_pcis_wdata);
-    $display ("InData[63:0] 0x%x...", sh_cl_dma_pcis_wdata[63:0]);
   end
   if (sh_cl_dma_pcis_arvalid && cl_sh_dma_pcis_arready) begin
     $display ("Address size/len 0x%x/0x%x...", sh_cl_dma_pcis_arsize, sh_cl_dma_pcis_arlen);
@@ -295,7 +293,6 @@ always_ff @(posedge clk_main_a0) begin
   end
   if (sh_cl_dma_pcis_rready && cl_sh_dma_pcis_rvalid) begin
     $display ("OutData 0x%x...", cl_sh_dma_pcis_rdata);
-    $display ("OutData[63:0] 0x%x...", cl_sh_dma_pcis_rdata[63:0]);
     $display ("rlast 0x%x...", cl_sh_dma_pcis_rlast);
   end
 end
