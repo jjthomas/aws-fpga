@@ -33,6 +33,7 @@ exec rm -f $TARGET_DIR/*
 file copy -force $CL_DIR/design/cl_hello_world_defines.vh             $TARGET_DIR
 file copy -force $CL_DIR/design/cl_id_defines.vh                      $TARGET_DIR
 file copy -force $CL_DIR/design/cl_hello_world.sv                     $TARGET_DIR 
+file copy -force $CL_DIR/design/sorter.sv                             $TARGET_DIR 
 file copy -force $CL_DIR/../common/design/cl_common_defines.vh        $TARGET_DIR 
 file copy -force $UNUSED_TEMPLATES_DIR/unused_apppf_irq_template.inc  $TARGET_DIR
 file copy -force $UNUSED_TEMPLATES_DIR/unused_aurora_template.inc     $TARGET_DIR
