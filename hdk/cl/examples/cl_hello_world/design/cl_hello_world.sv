@@ -266,64 +266,97 @@ always_ff @(posedge clk_main_a0)
    end
 */
 
+logic[15:0] awid;
+logic[63:0] awaddr;
+logic[7:0] awlen;
+logic [2:0] awsize;
+logic awvalid;
+logic awready;
+
+logic[15:0] wid;
+logic[511:0] wdata;
+logic[63:0] wstrb;
+logic wlast;
+logic wvalid;
+logic wready;
+   
+logic[15:0] bid;
+logic[1:0] bresp;
+logic bvalid;
+logic bready;
+   
+logic[15:0] arid;
+logic[63:0] araddr;
+logic[7:0] arlen;
+logic [2:0] arsize;
+logic arvalid;
+logic arready;
+   
+logic[15:0] rid;
+logic[511:0] rdata;
+logic[1:0] rresp;
+logic rlast;
+logic rvalid;
+logic rready;
+
 axi_register_slice PCI_AXL_REG_SLC (
     .aclk          (clk_main_a0),
     .aresetn       (!rst_main_n_sync),
-    .s_axi_awid    (sh_cl_dma_pcis_bus.awid),
-    .s_axi_awaddr  (sh_cl_dma_pcis_bus.awaddr),
-    .s_axi_awlen   (sh_cl_dma_pcis_bus.awlen),                                            
-    .s_axi_awvalid (sh_cl_dma_pcis_bus.awvalid),
-    .s_axi_awsize  (sh_cl_dma_pcis_bus.awsize),
-    .s_axi_awready (sh_cl_dma_pcis_bus.awready),
-    .s_axi_wdata   (sh_cl_dma_pcis_bus.wdata),
-    .s_axi_wstrb   (sh_cl_dma_pcis_bus.wstrb),
-    .s_axi_wlast   (sh_cl_dma_pcis_bus.wlast),
-    .s_axi_wvalid  (sh_cl_dma_pcis_bus.wvalid),
-    .s_axi_wready  (sh_cl_dma_pcis_bus.wready),
-    .s_axi_bid     (sh_cl_dma_pcis_bus.bid),
-    .s_axi_bresp   (sh_cl_dma_pcis_bus.bresp),
-    .s_axi_bvalid  (sh_cl_dma_pcis_bus.bvalid),
-    .s_axi_bready  (sh_cl_dma_pcis_bus.bready),
-    .s_axi_arid    (sh_cl_dma_pcis_bus.arid),
-    .s_axi_araddr  (sh_cl_dma_pcis_bus.araddr),
-    .s_axi_arlen   (sh_cl_dma_pcis_bus.arlen), 
-    .s_axi_arvalid (sh_cl_dma_pcis_bus.arvalid),
-    .s_axi_arsize  (sh_cl_dma_pcis_bus.arsize),
-    .s_axi_arready (sh_cl_dma_pcis_bus.arready),
-    .s_axi_rid     (sh_cl_dma_pcis_bus.rid),
-    .s_axi_rdata   (sh_cl_dma_pcis_bus.rdata),
-    .s_axi_rresp   (sh_cl_dma_pcis_bus.rresp),
-    .s_axi_rlast   (sh_cl_dma_pcis_bus.rlast),
-    .s_axi_rvalid  (sh_cl_dma_pcis_bus.rvalid),
-    .s_axi_rready  (sh_cl_dma_pcis_bus.rready),
+    .s_axi_awid    (sh_cl_dma_pcis_awid),
+    .s_axi_awaddr  (sh_cl_dma_pcis_awaddr),
+    .s_axi_awlen   (sh_cl_dma_pcis_awlen),                                            
+    .s_axi_awvalid (sh_cl_dma_pcis_awvalid),
+    .s_axi_awsize  (sh_cl_dma_pcis_awsize),
+    .s_axi_awready (cl_sh_dma_pcis_awready),
+    .s_axi_wdata   (sh_cl_dma_pcis_wdata),
+    .s_axi_wstrb   (sh_cl_dma_pcis_wstrb),
+    .s_axi_wlast   (sh_cl_dma_pcis_wlast),
+    .s_axi_wvalid  (sh_cl_dma_pcis_wvalid),
+    .s_axi_wready  (cl_sh_dma_pcis_wready),
+    .s_axi_bid     (cl_sh_dma_pcis_bid),
+    .s_axi_bresp   (cl_sh_dma_pcis_bresp),
+    .s_axi_bvalid  (cl_sh_dma_pcis_bvalid),
+    .s_axi_bready  (sh_cl_dma_pcis_bready),
+    .s_axi_arid    (sh_cl_dma_pcis_arid),
+    .s_axi_araddr  (sh_cl_dma_pcis_araddr),
+    .s_axi_arlen   (sh_cl_dma_pcis_arlen), 
+    .s_axi_arvalid (sh_cl_dma_pcis_arvalid),
+    .s_axi_arsize  (sh_cl_dma_pcis_arsize),
+    .s_axi_arready (cl_sh_dma_pcis_arready),
+    .s_axi_rid     (cl_sh_dma_pcis_rid),
+    .s_axi_rdata   (cl_sh_dma_pcis_rdata),
+    .s_axi_rresp   (cl_sh_dma_pcis_rresp),
+    .s_axi_rlast   (cl_sh_dma_pcis_rlast),
+    .s_axi_rvalid  (cl_sh_dma_pcis_rvalid),
+    .s_axi_rready  (sh_cl_dma_pcis_rready),
 
-    .m_axi_awid    (sh_cl_dma_pcis_q.awid),
-    .m_axi_awaddr  (sh_cl_dma_pcis_q.awaddr), 
-    .m_axi_awlen   (sh_cl_dma_pcis_q.awlen),
-    .m_axi_awvalid (sh_cl_dma_pcis_q.awvalid),
-    .m_axi_awsize  (sh_cl_dma_pcis_q.awsize),
-    .m_axi_awready (sh_cl_dma_pcis_q.awready),
-    .m_axi_wdata   (sh_cl_dma_pcis_q.wdata),  
-    .m_axi_wstrb   (sh_cl_dma_pcis_q.wstrb),
-    .m_axi_wvalid  (sh_cl_dma_pcis_q.wvalid), 
-    .m_axi_wlast   (sh_cl_dma_pcis_q.wlast),
-    .m_axi_wready  (sh_cl_dma_pcis_q.wready), 
-    .m_axi_bresp   (sh_cl_dma_pcis_q.bresp),  
-    .m_axi_bvalid  (sh_cl_dma_pcis_q.bvalid), 
-    .m_axi_bid     (sh_cl_dma_pcis_q.bid),
-    .m_axi_bready  (sh_cl_dma_pcis_q.bready), 
-    .m_axi_arid    (sh_cl_dma_pcis_q.arid), 
-    .m_axi_araddr  (sh_cl_dma_pcis_q.araddr), 
-    .m_axi_arlen   (sh_cl_dma_pcis_q.arlen), 
-    .m_axi_arsize  (sh_cl_dma_pcis_q.arsize), 
-    .m_axi_arvalid (sh_cl_dma_pcis_q.arvalid),
-    .m_axi_arready (sh_cl_dma_pcis_q.arready),
-    .m_axi_rid     (sh_cl_dma_pcis_q.rid),  
-    .m_axi_rdata   (sh_cl_dma_pcis_q.rdata),  
-    .m_axi_rresp   (sh_cl_dma_pcis_q.rresp),  
-    .m_axi_rlast   (sh_cl_dma_pcis_q.rlast),  
-    .m_axi_rvalid  (sh_cl_dma_pcis_q.rvalid), 
-    .m_axi_rready  (sh_cl_dma_pcis_q.rready)
+    .m_axi_awid    (awid),
+    .m_axi_awaddr  (awaddr), 
+    .m_axi_awlen   (awlen),
+    .m_axi_awvalid (awvalid),
+    .m_axi_awsize  (awsize),
+    .m_axi_awready (awready),
+    .m_axi_wdata   (wdata),  
+    .m_axi_wstrb   (wstrb),
+    .m_axi_wvalid  (wvalid), 
+    .m_axi_wlast   (wlast),
+    .m_axi_wready  (wready), 
+    .m_axi_bresp   (bresp),  
+    .m_axi_bvalid  (bvalid), 
+    .m_axi_bid     (bid),
+    .m_axi_bready  (bready), 
+    .m_axi_arid    (arid), 
+    .m_axi_araddr  (araddr), 
+    .m_axi_arlen   (arlen), 
+    .m_axi_arsize  (arsize), 
+    .m_axi_arvalid (arvalid),
+    .m_axi_arready (arready),
+    .m_axi_rid     (rid),  
+    .m_axi_rdata   (rdata),  
+    .m_axi_rresp   (rresp),  
+    .m_axi_rlast   (rlast),  
+    .m_axi_rvalid  (rvalid), 
+    .m_axi_rready  (rready)
 );
 
 logic network_valid;
@@ -335,34 +368,34 @@ logic aw_sent = 0;
 sorter sort(
   .clock(clk_main_a0),
   .reset(!rst_main_n_sync),
-  .io_blockValid(sh_cl_dma_pcis_wvalid && aw_sent),
-  .io_block(sh_cl_dma_pcis_wdata),
-  .io_downstreamReady(sh_cl_dma_pcis_rready && ar_sent),
+  .io_blockValid(wvalid && aw_sent),
+  .io_block(wdata),
+  .io_downstreamReady(rready && ar_sent),
   .io_thisReady(network_ready),
   .io_outValid(network_valid),
-  .io_out(cl_sh_dma_pcis_rdata)
+  .io_out(rdata)
 );
 
 /*
 always_ff @(posedge clk_main_a0) begin
-  if (cl_sh_dma_pcis_wready && sh_cl_dma_pcis_wvalid) begin
-    $display ("InData 0x%x...", sh_cl_dma_pcis_wdata);
+  if (wready && wvalid) begin
+    $display ("InData 0x%x...", wdata);
   end
-  if (sh_cl_dma_pcis_arvalid && cl_sh_dma_pcis_arready) begin
-    $display ("Read address size/len 0x%x/0x%x...", sh_cl_dma_pcis_arsize, sh_cl_dma_pcis_arlen);
-    $display ("Read address request 0x%x...", sh_cl_dma_pcis_araddr);
+  if (arvalid && arready) begin
+    $display ("Read address size/len 0x%x/0x%x...", arsize, arlen);
+    $display ("Read address request 0x%x...", araddr);
   end
-  if (sh_cl_dma_pcis_awvalid && cl_sh_dma_pcis_awready) begin
-    $display ("Write address 0x%x...", sh_cl_dma_pcis_awaddr);
+  if (awvalid && awready) begin
+    $display ("Write address 0x%x...", awaddr);
   end
-  if (sh_cl_dma_pcis_rready && cl_sh_dma_pcis_rvalid) begin
-    $display ("OutData 0x%x...", cl_sh_dma_pcis_rdata);
-    $display ("rlast 0x%x...", cl_sh_dma_pcis_rlast);
+  if (rready && rvalid) begin
+    $display ("OutData 0x%x...", rdata);
+    $display ("rlast 0x%x...", rlast);
   end
-  if (cl_sh_dma_pcis_bvalid && sh_cl_dma_pcis_bready) begin
+  if (bvalid && bready) begin
     $display ("bvalid...");
   end
-  if (sh_cl_dma_pcis_awvalid && cl_sh_dma_pcis_awready) begin
+  if (awvalid && awready) begin
     $display ("aw_sent...");
   end
 end
@@ -378,38 +411,38 @@ end
 // assign sh_cl_dma_pcis_bus.wstrb = sh_cl_dma_pcis_wstrb;
 // assign sh_cl_dma_pcis_bus.wlast = sh_cl_dma_pcis_wlast;
 // assign cl_sh_dma_pcis_wready = sh_cl_dma_pcis_bus.wready;
-assign cl_sh_dma_pcis_bresp = 0;
+assign bresp = 0;
 // assign sh_cl_dma_pcis_bus.bready = sh_cl_dma_pcis_bready;
-assign cl_sh_dma_pcis_bid = 0;
+assign bid = 0;
 // assign sh_cl_dma_pcis_bus.arvalid = sh_cl_dma_pcis_arvalid;
 // assign sh_cl_dma_pcis_bus.araddr = sh_cl_dma_pcis_araddr;
 // assign sh_cl_dma_pcis_bus.arid[5:0] = sh_cl_dma_pcis_arid;
 // assign sh_cl_dma_pcis_bus.arlen = sh_cl_dma_pcis_arlen;
 // assign sh_cl_dma_pcis_bus.arsize = sh_cl_dma_pcis_arsize;
 // assign cl_sh_dma_pcis_rvalid = sh_cl_dma_pcis_bus.rvalid;
-assign cl_sh_dma_pcis_rid = 0;
-assign cl_sh_dma_pcis_rresp = 0;
+assign rid = 0;
+assign rresp = 0;
 // assign cl_sh_dma_pcis_rdata = sh_cl_dma_pcis_bus.rdata;
 // assign sh_cl_dma_pcis_bus.rready = sh_cl_dma_pcis_rready;
 
 assign cl_sh_flr_done = 1;
 
 logic [7:0] beat_count;
-logic [7:0] arlen;
-assign cl_sh_dma_pcis_arready = ar_sent == 0;
-assign cl_sh_dma_pcis_rlast = beat_count == arlen;
-assign cl_sh_dma_pcis_rvalid = ar_sent && network_valid;
+logic [7:0] arlen_reg;
+assign arready = ar_sent == 0;
+assign rlast = beat_count == arlen_reg;
+assign rvalid = ar_sent && network_valid;
 always_ff @(posedge clk_main_a0) begin
   if (!rst_main_n_sync) begin
     ar_sent <= 0; 
   end
-  else if (sh_cl_dma_pcis_arvalid && cl_sh_dma_pcis_arready) begin
+  else if (arvalid && arready) begin
     beat_count <= 0;
-    arlen <= sh_cl_dma_pcis_arlen;
+    arlen_reg <= arlen;
     ar_sent <= 1;
   end
-  else if (sh_cl_dma_pcis_rready && cl_sh_dma_pcis_rvalid) begin
-    if (cl_sh_dma_pcis_rlast) begin    
+  else if (rready && rvalid) begin
+    if (rlast) begin    
       ar_sent <= 0; 
     end
     else begin
@@ -418,25 +451,25 @@ always_ff @(posedge clk_main_a0) begin
   end
 end
 
-logic bvalid = 0;
-assign cl_sh_dma_pcis_awready = aw_sent == 0;
-assign cl_sh_dma_pcis_wready = aw_sent && network_ready;
-assign cl_sh_dma_pcis_bvalid = bvalid;
+logic bvalid_reg = 0;
+assign awready = aw_sent == 0;
+assign wready = aw_sent && network_ready;
+assign bvalid = bvalid_reg;
 always_ff @(posedge clk_main_a0) begin
   if (!rst_main_n_sync) begin
     aw_sent <= 0; 
   end
-  else if (sh_cl_dma_pcis_awvalid && cl_sh_dma_pcis_awready) begin
+  else if (awvalid && awready) begin
     aw_sent <= 1;
   end
-  else if (bvalid && sh_cl_dma_pcis_bready) begin
+  else if (bvalid_reg && bready) begin
     aw_sent <= 0;
   end
-  bvalid <= bvalid && sh_cl_dma_pcis_bready
+  bvalid_reg <= bvalid_reg && bready
             ? 1'b0  : 
-            ~bvalid && cl_sh_dma_pcis_wready && sh_cl_dma_pcis_wvalid && sh_cl_dma_pcis_wlast
+            ~bvalid_reg && wready && wvalid && wlast
             ? 1'b1  :
-            bvalid;
+            bvalid_reg;
 end
 
 /*
