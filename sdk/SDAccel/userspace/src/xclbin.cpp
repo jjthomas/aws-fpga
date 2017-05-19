@@ -25,7 +25,7 @@ const char *get_afi_from_xclBin(const xclBin *buffer)
 {
     const char *afid = reinterpret_cast<const char *>(buffer);
     afid += buffer->m_primaryFirmwareOffset;
-    if (std::memcmp(afid, "AFID", 4))
+    if (std::memcmp(afid, "afid-", 5) && std::memcmp(afid, "agfi-", 5))
         return nullptr;
     return afid;
 }
@@ -35,7 +35,7 @@ const char *get_afi_from_axlf(const axlf *buffer)
     const axlf_section_header *bit_header = xclbin::get_axlf_section(buffer, BITSTREAM);
     const char *afid = reinterpret_cast<const char *>(buffer);
     afid += bit_header->m_sectionOffset;
-    if (std::memcmp(afid, "AFID", 4))
+    if (std::memcmp(afid, "afid-", 5) && std::memcmp(afid, "agfi-", 5))
         return nullptr;
     return afid;
 }

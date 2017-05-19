@@ -91,6 +91,8 @@ namespace awsbwhal {
         return ioctl(mMgtHandle, cmd, &obj);
 #else
         const char* afi_id = get_afi_from_axlf(buffer);
+        if (!afi_id)
+            return -EINVAL;
         return fpga_mgmt_load_local_image(mBoardNumber, const_cast<char *>(afi_id));
 #endif
     }
@@ -116,6 +118,8 @@ namespace awsbwhal {
         return ioctl(mMgtHandle, cmd, &obj);
 #else
 	const char* afi_id = get_afi_from_xclBin(buffer);
+        if (!afi_id)
+            return -EINVAL;
 	return fpga_mgmt_load_local_image(mBoardNumber, const_cast<char *>(afi_id));
 	// TODO - add printout and eror case handing
 #endif
@@ -374,10 +378,12 @@ namespace awsbwhal {
         char file_name_buf[128];
         unsigned i  = 0;
         for (i = 0; i < 16; i++) {
-#ifdef INTERNAL_TESTING
+#if defined(INTERNAL_TESTING)
             std::sprintf((char *)&file_name_buf, "/dev/awsmgmt%d", i);
-#else
+#elif defined(AWS_EDMA)
             std::sprintf((char *)&file_name_buf, "/dev/edma%u_queue0", i);
+#else
+            std::sprintf((char *)&file_name_buf, "/dev/xdma%u_user", i);
 #endif
             int fd = open(file_name_buf, O_RDWR);
             if (fd < 0) {
@@ -809,7 +815,7 @@ namespace awsbwhal {
 #else
 //    #       error "INTERNAL_TESTING macro disabled. AMZN code goes here. "
 //    #       This API is not supported in AWS, the frequencies are set per AFI
-            return -1;
+            return 0;
 #endif
         }
     }

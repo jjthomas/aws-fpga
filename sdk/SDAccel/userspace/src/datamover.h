@@ -41,24 +41,25 @@
 #define SHIM_O2
 #endif
 
+#if defined(AWS_EDMA)
+        #define DMA_PATHNAME "/dev/edma"
+        #define DMA_PATHH2C "_queue_"
+        #define DMA_PATHC2H "_queue_"
+#else
+        #define DMA_PATHNAME "/dev/xdma"
+        #define DMA_PATHH2C "_h2c_"
+        #define DMA_PATHC2H "_c2h_"
+#endif
+
 namespace awsbwhal {
     class DMAChannelManager
     {
-#if defined(AWS_EDMA)
-        static constexpr char dmapathname[] = "/dev/edma";
-        static constexpr char dmapathh2c[] = "_queue_";
-        static constexpr char dmapathc2h[] = "_queue_";
-#else
-        static constexpr char dmapathname[] = "/dev/xdma";
-        static constexpr char dmapathh2c[] = "_h2c_";
-        static constexpr char dmapathc2h[] = "_c2h_";
-#endif
     public:
         DMAChannelManager(unsigned deviceIndex, unsigned count, std::ios_base::openmode mode) : mCount(count) {
-            std::string baseName(dmapathname);
+            std::string baseName(DMA_PATHNAME);
             baseName += std::to_string(deviceIndex);
             assert((mode == std::ios_base::in) || (mode == std::ios_base::out));
-            const char *suffix = (mode == std::ios_base::out) ? dmapathh2c : dmapathc2h;
+            const char *suffix = (mode == std::ios_base::out) ? DMA_PATHH2C : DMA_PATHC2H;
             baseName += suffix;
             for (mIndex = 0; mIndex < static_cast<int>(mCount); ++mIndex) {
                 std::string fileName(baseName);
