@@ -301,7 +301,7 @@ logic rready;
 
 axi_register_slice PCI_AXL_REG_SLC (
     .aclk          (clk_main_a0),
-    .aresetn       (!rst_main_n_sync),
+    .aresetn       (rst_main_n_sync),
     .s_axi_awid    (sh_cl_dma_pcis_awid),
     .s_axi_awaddr  (sh_cl_dma_pcis_awaddr),
     .s_axi_awlen   (sh_cl_dma_pcis_awlen),                                            
