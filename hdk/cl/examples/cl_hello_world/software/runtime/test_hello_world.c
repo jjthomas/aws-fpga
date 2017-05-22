@@ -13,189 +13,202 @@
 // implied. See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include <stdio.h>
-#include <stdint.h>
-#include <stdbool.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <poll.h>
 
 #include <fpga_pci.h>
 #include <fpga_mgmt.h>
 #include <utils/lcd.h>
 
-/* Constants determined by the CL */
-/* a set of register offsets; this CL has only one */
-/* these register addresses should match the addresses in */
-/* /aws-fpga/hdk/cl/examples/common/cl_common_defines.vh */
-
-#define HELLO_WORLD_REG_ADDR UINT64_C(0x500)
-#define VLED_REG_ADDR	UINT64_C(0x504)
-
-/*
- * pci_vendor_id and pci_device_id values below are Amazon's and avaliable to use for a given FPGA slot. 
- * Users may replace these with their own if allocated to them by PCI SIG
- */
 static uint16_t pci_vendor_id = 0x1D0F; /* Amazon PCI Vendor ID */
-static uint16_t pci_device_id = 0xF000; /* PCI Device ID preassigned by Amazon for F1 applications */
+static uint16_t pci_device_id = 0xF001;
+/* */
 
+#define	MEM_16G		(1ULL << 34)
 
-/* use the stdout logger for printing debug information  */
+/* use the stdout logger */
 const struct logger *logger = &logger_stdout;
 
-/* Declaring the local functions */
-
-int peek_poke_example(int slot, int pf_id, int bar_id);
-int vled_example(int slot);
-
-/* Declating auxilary house keeping functions */
-int initialize_log(char* log_name);
-int check_afi_ready(int slot);
-
+int dma_example(int slot_i);
 
 int main(int argc, char **argv) {
     int rc;
     int slot_id;
 
-    /* initialize the fpga_pci library so we could have access to FPGA PCIe from this applications */
-    rc = fpga_pci_init();
-    fail_on(rc, out, "Unable to initialize the fpga_pci library");
+    /* setup logging to print to stdout */
+    rc = log_init("test_dram_dma");
+    fail_on(rc, out, "Unable to initialize the log.");
+    rc = log_attach(logger, NULL, 0);
+    fail_on(rc, out, "%s", "Unable to attach to the log.");
 
-    /* This demo works with single FPGA slot, we pick slot #0 as it works for both f1.2xl and f1.16xl */
+    /* initialize the fpga_plat library */
+    rc = fpga_mgmt_init();
+    fail_on(rc, out, "Unable to initialize the fpga_mgmt library");
 
     slot_id = 0;
 
-    rc = check_afi_ready(slot_id);
-    fail_on(rc, out, "AFI not ready");
-    
-    /* Accessing the CL registers via AppPF BAR0, which maps to sh_cl_ocl_ AXI-Lite bus between AWS FPGA Shell and the CL*/
+    rc = dma_example(slot_id);
+    fail_on(rc, out, "DMA example failed");
 
-    printf("===== Starting with peek_poke_example =====\n");	
-    rc = peek_poke_example(slot_id, FPGA_APP_PF, APP_PF_BAR0);
-    fail_on(rc, out, "peek-poke example failed");
-
-
-    printf("Developers are encourged to modify the Virtual DIP Switch by calling the linux shell command to demonstrate how AWS FPGA Virtual DIP switches can be used to change a CustomLogic functionality:\n");
-    printf("$ fpga-set-virtual-dip-switch -S (slot-id) -D (16 digit setting)\n\n");
-    printf("In this example, setting a virtual DIP switch to zero clears the corresponding LED, even if the peek-poke example would set it to 1.\nFor instance:\n");
-     
-    printf(
-        "# fpga-set-virtual-dip-switch -S 0 -D 1111111111111111\n"
-        "# fpga-get-virtual-led  -S 0\n"
-        "FPGA slot id 0 have the following Virtual LED:\n"
-        "1010-1101-1101-1110\n"
-        "# fpga-set-virtual-dip-switch -S 0 -D 0000000000000000\n"
-        "# fpga-get-virtual-led  -S 0\n"
-        "FPGA slot id 0 have the following Virtual LED:\n"
-        "0000-0000-0000-0000\n"
-    );
-
-  
+out:
     return rc;
-    
-   
-out:
-    return 1;
 }
 
-
-
-/*
- * An example to attach to an arbitrary slot, pf, and bar with register access.
- */
-int peek_poke_example(int slot_id, int pf_id, int bar_id) {
+static int
+check_slot_config(int slot_id)
+{
     int rc;
-    /* pci_bar_handle_t is a handler for an address space exposed by one PCI BAR on one of the PCI PFs of the FPGA */
+    struct fpga_mgmt_image_info info = {0};
 
-    pci_bar_handle_t pci_bar_handle = PCI_BAR_HANDLE_INIT;
-
-    /* attach to the fpga, with a pci_bar_handle out param
-     * To attach to multiple slots or BARs, call this function multiple times,
-     * saving the pci_bar_handle to specify which address space to interact with in
-     * other API calls.
-     * This function accepts the slot_id, physical function, and bar number
-     */
-    rc = fpga_pci_attach(slot_id, pf_id, bar_id, 0, &pci_bar_handle);
-    fail_on(rc, out, "Unable to attach to the AFI on slot id %d", slot_id);
-
-    /* write a value into the mapped address space */
-    uint32_t value = 0xefbeadde;
-    uint32_t expected = 0xdeadbeef;
-    rc = fpga_pci_poke(pci_bar_handle, HELLO_WORLD_REG_ADDR, value);
-    fail_on(rc, out, "Unable to write to the fpga !");
-
-    /* read it back and print it out; you should expect the byte order to be
-     * reversed (That's what this CL does) */
-    rc = fpga_pci_peek(pci_bar_handle, HELLO_WORLD_REG_ADDR, &value);
-    fail_on(rc, out, "Unable to read read from the fpga !");
-    printf("register: 0x%x\n", value);
-    if(value == expected) {
-        printf("Resulting value matched expected value 0x%x. It worked!\n", expected);
-    }
-    else{
-        printf("Resulting value did not match expected value 0x%x. Something didn't work.\n", expected);
-    }
-out:
-    /* clean up */
-    if (pci_bar_handle >= 0) {
-        rc = fpga_pci_detach(pci_bar_handle);
-        if (rc) {
-            printf("Failure while detaching from the fpga.\n");
-        }
-    }
-
-    /* if there is an error code, exit with status 1 */
-    return (rc != 0 ? 1 : 0);
-}
-
-
-/*
- * check if the corresponding AFI for hello_world is loaded
- */
-
-int check_afi_ready(int slot_id) {
-    struct fpga_mgmt_image_info info = {0}; 
-    int rc;
-
-    /* get local image description, contains status, vendor id, and device id. */
-    rc = fpga_mgmt_describe_local_image(slot_id, &info,0);
-    fail_on(rc, out, "Unable to get AFI information from slot %d. Are you running as root?",slot_id);
+    /* get local image description, contains status, vendor id, and device id */
+    rc = fpga_mgmt_describe_local_image(slot_id, &info, 0);
+    fail_on(rc, out, "Unable to get local image information. Are you running as root?");
 
     /* check to see if the slot is ready */
     if (info.status != FPGA_STATUS_LOADED) {
         rc = 1;
-        fail_on(rc, out, "AFI in Slot %d is not in READY state !", slot_id);
+        fail_on(rc, out, "Slot %d is not ready", slot_id);
     }
-
-    printf("AFI PCI  Vendor ID: 0x%x, Device ID 0x%x\n",
-        info.spec.map[FPGA_APP_PF].vendor_id,
-        info.spec.map[FPGA_APP_PF].device_id);
 
     /* confirm that the AFI that we expect is in fact loaded */
     if (info.spec.map[FPGA_APP_PF].vendor_id != pci_vendor_id ||
         info.spec.map[FPGA_APP_PF].device_id != pci_device_id) {
-        printf("AFI does not show expected PCI vendor id and device ID. If the AFI "
-               "was just loaded, it might need a rescan. Rescanning now.\n");
-
-        rc = fpga_pci_rescan_slot_app_pfs(slot_id);
-        fail_on(rc, out, "Unable to update PF for slot %d",slot_id);
-        /* get local image description, contains status, vendor id, and device id. */
-        rc = fpga_mgmt_describe_local_image(slot_id, &info,0);
-        fail_on(rc, out, "Unable to get AFI information from slot %d",slot_id);
-
-        printf("AFI PCI  Vendor ID: 0x%x, Device ID 0x%x\n",
-            info.spec.map[FPGA_APP_PF].vendor_id,
-            info.spec.map[FPGA_APP_PF].device_id);
-
-        /* confirm that the AFI that we expect is in fact loaded after rescan */
-        if (info.spec.map[FPGA_APP_PF].vendor_id != pci_vendor_id ||
-             info.spec.map[FPGA_APP_PF].device_id != pci_device_id) {
-            rc = 1;
-            fail_on(rc, out, "The PCI vendor id and device of the loaded AFI are not "
-                             "the expected values.");
-        }
+        rc = 1;
+        printf("The slot appears loaded, but the pci vendor or device ID doesn't "
+               "match the expected values. You may need to rescan the fpga with \n"
+               "fpga-describe-local-image -S %i -R\n"
+               "Note that rescanning can change which device file in /dev/ a FPGA will map to.\n"
+               "To remove and re-add your edma driver and reset the device file mappings, run\n"
+               "`sudo rmmod edma-drv && sudo insmod <aws-fpga>/sdk/linux_kernel_drivers/edma/edma-drv.ko`\n",
+               slot_id);
+        fail_on(rc, out, "The PCI vendor id and device of the loaded image are "
+                         "not the expected values.");
     }
-    
-    return rc;
 
 out:
-    return 1;
+    return rc;
+}
+
+
+/* helper function to initialize a buffer that would be written to the FPGA later */
+
+void
+rand_string(char *str, size_t size)
+{
+    static const char charset[] =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRTSUVWXYZ1234567890";
+    static bool seeded = false;
+
+    if (!seeded) {
+        srand(time(NULL));
+        seeded = true;
+    }
+
+    for(int i = 0; i < size-1; ++i) {
+        unsigned int key = rand() % (sizeof charset - 1);
+        str[i] = charset[key];
+    }
+
+    str[size-1] = '\0';
+}
+
+/* 
+ * Write 4 identical buffers to the 4 different DRAM channels of the AFI
+ * using fsync() between the writes and read to insure order
+ */
+
+int dma_example(int slot_id) {
+    int fd, rc;
+    char device_file_name[256];
+    char *write_buffer, *read_buffer;
+    static const size_t buffer_size = 8 * 32; // bytes per elem * sorter capacity
+    int channel=0;
+
+    read_buffer = NULL;
+    write_buffer = NULL;
+    fd = -1;
+
+    rc = sprintf(device_file_name, "/dev/edma%i_queue_0", slot_id);
+    fail_on((rc = (rc < 0)? 1:0), out, "Unable to format device file name.");
+
+
+    /* make sure the AFI is loaded and ready */
+    rc = check_slot_config(slot_id);
+    fail_on(rc, out, "slot config is not correct");
+
+    fd = open(device_file_name, O_RDWR);
+    if(fd<0){
+        printf("Cannot open device file %s.\nMaybe the EDMA "
+               "driver isn't installed, isn't modified to attach to the PCI ID of "
+               "your CL, or you're using a device file that doesn't exist?\n"
+               "See the edma_install manual at <aws-fpga>/sdk/linux_kernel_drivers/edma/edma_install.md\n"
+               "Remember that rescanning your FPGA can change the device file.\n"
+               "To remove and re-add your edma driver and reset the device file mappings, run\n"
+               "`sudo rmmod edma-drv && sudo insmod <aws-fpga>/sdk/linux_kernel_drivers/edma/edma-drv.ko`\n",
+               device_file_name);
+        fail_on((rc = (fd < 0)? 1:0), out, "unable to open DMA queue. ");
+    }
+
+    write_buffer = (char *)malloc(buffer_size);
+    read_buffer = (char *)malloc(buffer_size);
+    if (write_buffer == NULL || read_buffer == NULL) {
+        rc = ENOMEM;
+        goto out;
+    }
+
+    rand_string(write_buffer, buffer_size);
+
+    	
+    rc = pwrite(fd, write_buffer, buffer_size, 0);
+
+    fail_on((rc = (rc < 0)? 1:0), out, "call to pwrite failed.");
+
+
+    /* fsync() will make sure the write made it to the target buffer 
+     * before read is done
+     */
+
+    fsync(fd);
+
+    rc = pread(fd, read_buffer, buffer_size, 0);
+    fail_on((rc = (rc < 0)? 1:0), out, "call to pread failed.");
+
+    if (memcmp(write_buffer, read_buffer, buffer_size) == 0) {
+    	printf("DRAM DMA read the same string as it wrote on channel %d (it worked correctly!)\n", channel);
+    } else {
+        int i;
+        printf("Bytes written to channel:\n");
+        for (i = 0; i < buffer_size; ++i) {
+            printf("%c", write_buffer[i]);
+        }
+
+        printf("\n\n");
+
+        printf("Bytes read:\n");
+        for (i = 0; i < buffer_size; ++i) {
+            printf("%c", read_buffer[i]);
+        }
+        printf("\n\n");
+     
+        rc = 1;
+        fail_on(rc, out, "Data read from DMA did not match data written with DMA. Was there an fsync() between the read and write?");
+    }
+
+out:
+    if (write_buffer != NULL) {
+        free(write_buffer);
+    }
+    if (read_buffer != NULL) {
+        free(read_buffer);
+    }
+    if (fd >= 0) {
+        close(fd);
+    }
+    /* if there is an error code, exit with status 1 */
+    return (rc != 0 ? 1 : 0);
 }

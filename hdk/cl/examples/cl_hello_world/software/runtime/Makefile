@@ -13,20 +13,19 @@
 # implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-#VPATH = src:include:$(HDK_DIR)/common/software/src:$(HDK_DIR)/common/software/include
 
 INCLUDES = -I$(SDK_DIR)/userspace/include
 
 CC = gcc
-CFLAGS = -DCONFIG_LOGLEVEL=4 -g -Wall $(INCLUDES)
+CFLAGS = -DCONFIG_LOGLEVEL=4 -std=gnu99 -g -Wall -Werror $(INCLUDES)
 
 LDLIBS = -lfpga_mgmt -lrt -lpthread
 
 SRC = test_hello_world.c
 OBJ = $(SRC:.c=.o)
-BIN = test_hello_world
+BIN = test_dram_dma
 
-all: $(BIN) check_env
+all: check_env $(BIN)
 
 $(BIN): $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
