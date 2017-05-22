@@ -184,6 +184,11 @@ int dma_example(int slot_id) {
         int i;
         printf("Bytes written to channel:\n");
         for (i = 0; i < buffer_size; ++i) {
+            if (i > 0 && i % 64 == 0) {
+              printf("\n"); 
+            } else if (i > 0 && i % 8 == 0) {
+              printf(",");
+            }
             printf("%c", write_buffer[i]);
         }
 
@@ -191,6 +196,11 @@ int dma_example(int slot_id) {
 
         printf("Bytes read:\n");
         for (i = 0; i < buffer_size; ++i) {
+            if (i > 0 && i % 64 == 0) {
+              printf("\n"); 
+            } else if (i > 0 && i % 8 == 0) {
+              printf(",");
+            }
             printf("%c", read_buffer[i]);
         }
         printf("\n\n");
