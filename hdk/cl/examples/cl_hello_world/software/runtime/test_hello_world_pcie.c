@@ -17,6 +17,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #include <fpga_pci.h>
 #include <fpga_mgmt.h>
@@ -69,7 +71,7 @@ int main(int argc, char **argv) {
     /* Accessing the CL registers via AppPF BAR0, which maps to sh_cl_ocl_ AXI-Lite bus between AWS FPGA Shell and the CL*/
 
     printf("===== Starting with peek_poke_example =====\n");	
-    rc = peek_poke_example(slot_id, FPGA_APP_PF, APP_PF_BAR0);
+    rc = peek_poke_example(slot_id, FPGA_APP_PF, APP_PF_BAR4);
     fail_on(rc, out, "peek-poke example failed");
 
 
@@ -107,16 +109,12 @@ int peek_poke_example(int slot_id, int pf_id, int bar_id) {
     }
     rc = fpga_pci_write_burst(pci_bar_handle, 0, (uint32_t *)input, size * 2);
     fail_on(rc, out, "Unable to write to the fpga !");
-    for (i = 0; i < size; ++i) {
-        if (i > 0 && i % 8 == 0) {
-          printf("\n"); 
-        } else if (i > 0) {
-          printf(",");
-        }
-        printf("%" PRIu64 "", input[i]);
+    /*
+    for (int i = 0; i < size; i++) {
+      rc = fpga_pci_poke64(pci_bar_handle, 0, input[i]);
+      fail_on(rc, out, "Unable to write to the fpga !");
     }
-
-    printf("\n\n");
+    */
 
     /* read it back and print it out; you should expect the byte order to be
      * reversed (That's what this CL does) */
@@ -125,7 +123,17 @@ int peek_poke_example(int slot_id, int pf_id, int bar_id) {
       rc = fpga_pci_peek64(pci_bar_handle, 0, output + i);
       fail_on(rc, out, "Unable to read read from the fpga !");
     }
-    for (i = 0; i < size; ++i) {
+
+    for (int i = 0; i < size; ++i) {
+        if (i > 0 && i % 8 == 0) {
+          printf("\n"); 
+        } else if (i > 0) {
+          printf(",");
+        }
+        printf("%" PRIu64 "", input[i]);
+    }
+    printf("\n\n");
+    for (int i = 0; i < size; ++i) {
         if (i > 0 && i % 8 == 0) {
           printf("\n"); 
         } else if (i > 0) {
@@ -133,6 +141,7 @@ int peek_poke_example(int slot_id, int pf_id, int bar_id) {
         }
         printf("%" PRIu64 "", output[i]);
     }
+    printf("\n\n");
     
 
 out:

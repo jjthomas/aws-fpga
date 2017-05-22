@@ -112,10 +112,10 @@ rand_string(char *str, size_t size)
 
     for(int i = 0; i < size-1; ++i) {
         unsigned int key = rand() % (sizeof charset - 1);
-        str[i] = charset[key];
+        str[i] = (i % 8 == 0) ? charset[key] : ' ';
     }
 
-    str[size-1] = '\0';
+    str[size-1] = ' ';
 }
 
 /* 
