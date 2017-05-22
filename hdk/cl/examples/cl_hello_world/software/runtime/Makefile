@@ -21,17 +21,24 @@ CFLAGS = -DCONFIG_LOGLEVEL=4 -std=gnu99 -g -Wall -Werror $(INCLUDES)
 
 LDLIBS = -lfpga_mgmt -lrt -lpthread
 
-SRC = test_hello_world.c
-OBJ = $(SRC:.c=.o)
-BIN = test_dram_dma
+SRC1 = test_hello_world.c
+OBJ1 = $(SRC1:.c=.o)
+BIN1 = test_hello_world
 
-all: check_env $(BIN)
+SRC2 = test_hello_world_pcie.c
+OBJ2 = $(SRC2:.c=.o)
+BIN2 = test_hello_world_pcie
 
-$(BIN): $(OBJ)
+all: check_env $(BIN1) $(BIN2)
+
+$(BIN1): $(OBJ1)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
+
+$(BIN2): $(OBJ2)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 clean:
-	rm -f *.o $(BIN)
+	rm -f *.o $(BIN1) $(BIN2)
 
 check_env:
 ifndef SDK_DIR
