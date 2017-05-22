@@ -63,6 +63,8 @@ static DEFINE_PCI_DEVICE_TABLE(edma_pci_tbl) = {
 #endif
 	{ PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_FPGA,
 	  PCI_ANY_ID, PCI_ANY_ID, 0, 0, PCI_ANY_ID},
+	{ PCI_VENDOR_ID_AMAZON, 0xf000,
+	  PCI_ANY_ID, PCI_ANY_ID, 0, 0, PCI_ANY_ID},
 	{ 0, }
 };
 MODULE_DEVICE_TABLE(pci, edma_pci_tbl);
