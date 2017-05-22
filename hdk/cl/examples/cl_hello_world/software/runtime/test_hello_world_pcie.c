@@ -116,13 +116,17 @@ int peek_poke_example(int slot_id, int pf_id, int bar_id) {
     }
     */
 
-    /* read it back and print it out; you should expect the byte order to be
-     * reversed (That's what this CL does) */
+    /*
     uint64_t *output = (uint64_t *)malloc(sizeof(uint64_t) * size);
     for (int i = 0; i < size; i++) {
       rc = fpga_pci_peek64(pci_bar_handle, 0, output + i);
       fail_on(rc, out, "Unable to read read from the fpga !");
     }
+    */
+    void *output_v;
+    rc = fpga_pci_get_address(pci_bar_handle, 0, size*2, &output_v);
+    fail_on(rc, out, "Unable to read read from the fpga !");
+    uint64_t *output = (uint64_t *)output_v;
 
     for (int i = 0; i < size; ++i) {
         if (i > 0 && i % 8 == 0) {
