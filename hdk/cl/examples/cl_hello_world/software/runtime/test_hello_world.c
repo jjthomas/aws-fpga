@@ -24,6 +24,7 @@
 #include <fpga_pci.h>
 #include <fpga_mgmt.h>
 #include <utils/lcd.h>
+#include <sys/time.h>
 
 static uint16_t pci_vendor_id = 0x1D0F; /* Amazon PCI Vendor ID */
 static uint16_t pci_device_id = 0xF000;
@@ -126,7 +127,7 @@ int dma_example(int slot_id) {
     int fd, rc;
     char device_file_name[256];
     char *write_buffer, *read_buffer;
-    static const size_t buffer_size = 8 * 32; // bytes per elem * sorter capacity
+    static const size_t buffer_size = 8 * 32 * 8; // bytes per elem * sorter capacity
     int channel=0;
 
     read_buffer = NULL;
@@ -163,20 +164,27 @@ int dma_example(int slot_id) {
 
     rand_string(write_buffer, buffer_size);
 
-    	
-    rc = pwrite(fd, write_buffer, buffer_size, 0);
+    struct timeval start, end, diff;
+    gettimeofday(&start, 0);
+    int its = 10000;
+    for (int i = 0; i < its; i++) {
+      rc = pwrite(fd, write_buffer, buffer_size, 0);
 
-    fail_on((rc = (rc < 0)? 1:0), out, "call to pwrite failed.");
+      fail_on((rc = (rc < 0)? 1:0), out, "call to pwrite failed.");
 
 
-    /* fsync() will make sure the write made it to the target buffer 
-     * before read is done
-     */
+      /* fsync() will make sure the write made it to the target buffer 
+       * before read is done
+       */
 
-    fsync(fd);
+      fsync(fd);
 
-    rc = pread(fd, read_buffer, buffer_size, 0);
-    fail_on((rc = (rc < 0)? 1:0), out, "call to pread failed.");
+      rc = pread(fd, read_buffer, buffer_size, 0);
+      fail_on((rc = (rc < 0)? 1:0), out, "call to pread failed.");
+    }
+    gettimeofday(&end, 0);
+    timersub(&end, &start, &diff);
+    printf("time for %d bytes: %ld.%06ld\n", (int) buffer_size * its, (long)diff.tv_sec, (long)diff.tv_usec);
 
     if (memcmp(write_buffer, read_buffer, buffer_size) == 0) {
     	printf("DRAM DMA read the same string as it wrote on channel %d (it worked correctly!)\n", channel);
