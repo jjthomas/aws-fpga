@@ -93,7 +93,20 @@ namespace awsbwhal {
         const char* afi_id = get_afi_from_axlf(buffer);
         if (!afi_id)
             return -EINVAL;
-        return fpga_mgmt_load_local_image(mBoardNumber, const_cast<char *>(afi_id));
+        int result = fpga_mgmt_load_local_image(mBoardNumber, const_cast<char *>(afi_id));
+        if (result)
+            return -EBUSY;
+        for (int i = 0; i < 10; i++) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            fpga_mgmt_image_info info;
+            std::memset(&info, 0, sizeof(struct fpga_mgmt_image_info));
+            result = fpga_mgmt_describe_local_image(mBoardNumber, &info, 0);
+            if (result)
+                return -EBUSY;
+            if (!std::strcmp(info.ids.afi_id, afi_id))
+                return 0;
+        }
+        return -EBUSY;
 #endif
     }
 
@@ -120,7 +133,20 @@ namespace awsbwhal {
 	const char* afi_id = get_afi_from_xclBin(buffer);
         if (!afi_id)
             return -EINVAL;
-	return fpga_mgmt_load_local_image(mBoardNumber, const_cast<char *>(afi_id));
+        int result = fpga_mgmt_load_local_image(mBoardNumber, const_cast<char *>(afi_id));
+        if (result)
+            return -EBUSY;
+        for (int i = 0; i < 10; i++) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            fpga_mgmt_image_info info;
+            std::memset(&info, 0, sizeof(struct fpga_mgmt_image_info));
+            result = fpga_mgmt_describe_local_image(mBoardNumber, &info, 0);
+            if (result)
+                return -EBUSY;
+            if (!std::strcmp(info.ids.afi_id, afi_id))
+                return 0;
+        }
+        return -EBUSY;
 	// TODO - add printout and eror case handing
 #endif
     }
