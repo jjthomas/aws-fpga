@@ -1,0 +1,13 @@
+---4---
+"FpgaImageId": "afi-0f46f30de86eeb89a", 
+"FpgaImageGlobalId": "agfi-05fa0ce28c6fe209b"
+
+---32---
+"FpgaImageId": "afi-0e8926323d42b63a3",
+"FpgaImageGlobalId": "agfi-0add7c997b733cf31"
+
+---128 (systolic)---
+"FpgaImageId": "afi-092bb7618c88a26b3", 
+"FpgaImageGlobalId": "agfi-0fe3ee26e33772da2"
+
+sudo rmmod edma-drv && sudo insmod ~/src/project_data/aws-fpga/sdk/linux_kernel_drivers/edma/edma-drv.ko
