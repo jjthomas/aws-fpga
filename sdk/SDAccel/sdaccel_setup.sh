@@ -89,6 +89,7 @@ info_msg "Setting up environment variables"
 module unload
 module load sdx
 export XILINX_SDX=/opt/Xilinx/SDx/2017.1.op
+export PATH=$XILINX_SDX/runtime/bin/:$PATH
 export LD_LIBRARY_PATH=$XILINX_SDX/runtime/lib/x86_64/:$LD_LIBRARY_PATH
 source $XILINX_SDX/settings64.sh
 if grep -q 'libxilinxopencl.so' /etc/OpenCL/vendors/xilinx.icd; then
@@ -107,7 +108,7 @@ echo "Done setting environment variables."
 dsa_dir=$SDK_DIR/SDAccel/aws_platform/xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0/hw/
 sdk_dsa=$dsa_dir/xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0.dsa
 sdk_dsa_s3_bucket=aws-fpga-hdk-resources
-s3_sdk_dsa=$sdk_dsa_s3_bucket/sdk/SDAccel/dsa_v04151701_FIX0508/xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0/xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0.dsa
+s3_sdk_dsa=$sdk_dsa_s3_bucket/sdk/SDAccel/dsa_v04151701_0524/xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0/xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0.dsa
 # Download the sha256
 if [ ! -e $dsa_dir ]; then
 	mkdir -p $dsa_dir || { err_msg "Failed to create $dsa_dir"; return 2; }

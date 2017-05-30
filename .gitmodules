@@ -1,3 +1,7 @@
 [submodule "sdk/SDAccel/examples/xilinx"]
 	path = sdk/SDAccel/examples/xilinx
 	url = https://github.com/Xilinx/SDAccel_Examples
+[submodule "sdk/SDAccel/examples/xilinx_2017_1_SDX"]
+	path = sdk/SDAccel/examples/xilinx_2017_1_SDX
+	url = https://github.com/Xilinx/SDAccel_Examples
+	branch = next
