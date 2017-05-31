@@ -46,6 +46,7 @@ extern "C" {
     typedef void * xclDeviceHandle;
 
     struct xclBin;
+    struct axlf;
     /**
      * Structure used to obtain various bits of information from the device.
      */
