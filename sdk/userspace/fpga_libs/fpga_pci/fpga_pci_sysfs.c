@@ -355,7 +355,10 @@ fpga_pci_get_all_slot_specs(struct fpga_slot_spec spec_array[], int size)
 	 */
 	while (true) {
 		memset(&entry, 0, sizeof(struct dirent));
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 		readdir_r(dirp, &entry, &result);
+#pragma GCC diagnostic pop
 		if (result == NULL) {
 			/** No more directories */
 			break;
