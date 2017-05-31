@@ -136,7 +136,7 @@ namespace awsbwhal {
 
         // TODO: Make pwrite64 and pread64 use RAII for the channel resource
         ssize_t pwrite64(const void* buf, size_t count, off64_t offset) {
-            if(count == 0)
+            if(count == 0) // Nothing to do
                 return 0;
             int fd = mWrite.acquireDMAChannel();
             ssize_t rc = pwrite(fd, buf, count, offset);
@@ -144,7 +144,7 @@ namespace awsbwhal {
             return rc;
         }
         ssize_t pread64(void* buf, size_t count, off64_t offset) {
-            if(count == 0)
+            if(count == 0) // Nothing to do
                 return 0;
             int fd = mRead.acquireDMAChannel();
             ssize_t rc = pread(fd, buf, count, offset);
@@ -153,7 +153,7 @@ namespace awsbwhal {
         }
         // Like memset but using pwrite
         void pset64(const void* buf, size_t count, off64_t offset, unsigned rep) {
-            if(count == 0)
+            if(count == 0) // Nothing to do
                 return;
             int fd = mWrite.acquireDMAChannel();
             off64_t curr = offset;

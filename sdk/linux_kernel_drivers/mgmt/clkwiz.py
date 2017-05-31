@@ -1,7 +1,16 @@
 #!/usr/bin/python
 
+# Copyright (C) 2017 Xilinx, Inc. All rights reserved.
+#
+# Code borrowed from Xilinx SDAccel MGMT driver
+# Author: Umang Parekh
+#
+# This script generates frequency table to program Xilinx Clock Wizards
+# This is for use only in NON-EC2/NON-F1 bare metal driver. This is NOT
+# useful for EC2/F1 end users
+#
+
 import re
-# import numpy as np
 
 maxFreq = 500.0
 inputFreq = 250.0
@@ -40,10 +49,6 @@ for vco in range(int(minVCOFreq), int(maxVCOFreq + 1.0), int(step)):
         print "Freq: %s, config0: %08x, config1: %08x" %(freq, config0, config1)
         table[int(freq)] = [int(config0), int(config1), int(vco)]
     print "================"
-
-# for freq in sorted(table.keys()):
-#     #print (freq, '--->', "08x"%(int(table[freq][0])))
-#     print ("\t%u, \t0x%08x, \t0x%08x, \t%u " %(freq, table[freq][0], table[freq][1], table[freq][2]))
 
 print "================"
 for freq,v in sorted(table.items()):

@@ -19,12 +19,21 @@
  */
 
 #include <cstring>
+
 #include "xclbin.h"
+
+#ifdef INTERNAL_TESTING
+#define AFI_ID_STR_MAX 64
+#else
+#include "hal/fpga_common.h"
+#endif
 
 const char *get_afi_from_xclBin(const xclBin *buffer)
 {
     const char *afid = reinterpret_cast<const char *>(buffer);
     afid += buffer->m_primaryFirmwareOffset;
+    if (buffer->m_primaryFirmwareLength > AFI_ID_STR_MAX)
+        return nullptr;
     if (std::memcmp(afid, "afi-", 4) && std::memcmp(afid, "agfi-", 5))
         return nullptr;
     return afid;
@@ -35,6 +44,8 @@ const char *get_afi_from_axlf(const axlf *buffer)
     const axlf_section_header *bit_header = xclbin::get_axlf_section(buffer, BITSTREAM);
     const char *afid = reinterpret_cast<const char *>(buffer);
     afid += bit_header->m_sectionOffset;
+    if (bit_header->m_sectionSize > AFI_ID_STR_MAX)
+        return nullptr;
     if (std::memcmp(afid, "afi-", 4) && std::memcmp(afid, "agfi-", 5))
         return nullptr;
     return afid;

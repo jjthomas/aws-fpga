@@ -11,7 +11,7 @@ ifeq ($(ec2),1)
 	STLIB = libawsxcldrv.a
 	SHLIB = libawsxcldrv.so
 else
-# for non-virtualized testing
+# For bare metal testing, i.e. in non EC2 environment
 	CXXFLAGS := -Werror -std=c++11 -DINTERNAL_TESTING
 	STLIB = libawsbmdrv.a
 	SHLIB = libawsbmdrv.so

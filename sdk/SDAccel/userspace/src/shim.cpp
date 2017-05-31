@@ -60,13 +60,16 @@
 #include "xclbin.h"
 
 #ifdef INTERNAL_TESTING
+
 #include "xdma/xdma_ioctl.h"
 #include "mgmt/mgmt-ioctl.h"
+
 #else
 
+#define XCLBIN_DOWNLOAD_RETRY 10
+#define XCLBIN_DOWNLOAD_WAIT 1
 #include <fpga_mgmt.h>
 #include <fpga_pci.h>
-
 // TODO - define this in a header file
 extern const char* get_afi_from_xclBin(const xclBin *buffer);
 extern const char *get_afi_from_axlf(const axlf *buffer);
@@ -96,14 +99,14 @@ namespace awsbwhal {
         int result = fpga_mgmt_load_local_image(mBoardNumber, const_cast<char *>(afi_id));
         if (result)
             return -EBUSY;
-        for (int i = 0; i < 10; i++) {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+        for (int i = 0; i < XCLBIN_DOWNLOAD_RETRY; i++) {
+            std::this_thread::sleep_for(std::chrono::seconds(XCLBIN_DOWNLOAD_WAIT));
             fpga_mgmt_image_info info;
             std::memset(&info, 0, sizeof(struct fpga_mgmt_image_info));
             result = fpga_mgmt_describe_local_image(mBoardNumber, &info, 0);
             if (result)
                 return -EBUSY;
-            if (!std::strcmp(info.ids.afi_id, afi_id))
+            if ((info.status == FPGA_STATUS_LOADED) && !std::strcmp(info.ids.afi_id, afi_id))
                 return 0;
         }
         return -EBUSY;
@@ -453,17 +456,16 @@ namespace awsbwhal {
         if (mMgtHandle > 0)
             close(mMgtHandle);
 #else
-//#       error "INTERNAL_TESTING macro disabled. AMZN code goes here. "
-        if (ocl_kernel_bar >=0)
+        if (ocl_kernel_bar > PCI_BAR_HANDLE_INIT)
             fpga_pci_detach(ocl_kernel_bar);
-        if (ocl_global_mem_bar>=0)
+        if (ocl_global_mem_bar > PCI_BAR_HANDLE_INIT)
             fpga_pci_detach(ocl_global_mem_bar);
-        if (sda_mgmt_bar>=0)
+        if (sda_mgmt_bar > PCI_BAR_HANDLE_INIT)
             fpga_pci_detach(sda_mgmt_bar);
 
-        ocl_kernel_bar = -1;
-        ocl_global_mem_bar = -1;
-        sda_mgmt_bar = -1;
+        ocl_kernel_bar = PCI_BAR_HANDLE_INIT;
+        ocl_global_mem_bar = PCI_BAR_HANDLE_INIT;
+        sda_mgmt_bar = PCI_BAR_HANDLE_INIT;
 
 #endif
         delete mDataMover;
@@ -514,24 +516,24 @@ namespace awsbwhal {
             mUserHandle = -1;
         }
 #else
-        ocl_kernel_bar = -1;
-        ocl_global_mem_bar = -1;
-        sda_mgmt_bar = -1;
+        ocl_kernel_bar = PCI_BAR_HANDLE_INIT;
+        ocl_global_mem_bar = PCI_BAR_HANDLE_INIT;
+        sda_mgmt_bar = PCI_BAR_HANDLE_INIT;
 
         if (xclGetDeviceInfo2(&mDeviceInfo)) {
             //	print error;
         }
         else
             if (fpga_pci_attach(slot_id, FPGA_APP_PF, APP_PF_BAR0, 0, &ocl_kernel_bar) ) {
-                ocl_kernel_bar = -1;
+                ocl_kernel_bar = PCI_BAR_HANDLE_INIT;
                 // print error
             }
             else
                 if (fpga_pci_attach(slot_id, FPGA_APP_PF, APP_PF_BAR4, 0, &ocl_global_mem_bar) ) {
                             fpga_pci_detach(ocl_kernel_bar);
-                            ocl_kernel_bar = -1;
-                            ocl_global_mem_bar = -1;
-                            sda_mgmt_bar = -1;
+                            ocl_kernel_bar = PCI_BAR_HANDLE_INIT;
+                            ocl_global_mem_bar = PCI_BAR_HANDLE_INIT;
+                            sda_mgmt_bar = PCI_BAR_HANDLE_INIT;
                             // print error
                 }
                 else
@@ -539,9 +541,9 @@ namespace awsbwhal {
                         // print error
                         fpga_pci_detach(ocl_kernel_bar);
                         fpga_pci_detach(ocl_global_mem_bar);
-                        ocl_kernel_bar = -1;
-                                ocl_global_mem_bar = -1;
-                                sda_mgmt_bar = -1;
+                        ocl_kernel_bar = PCI_BAR_HANDLE_INIT;
+                        ocl_global_mem_bar = PCI_BAR_HANDLE_INIT;
+                        sda_mgmt_bar = PCI_BAR_HANDLE_INIT;
                     }
 #endif
         initMemoryManager();

@@ -21,25 +21,27 @@
 extern "C" {
 #endif
 
-    /**
-     * Container format for Xilinx bitstreams, metadata and other
-     * binary blobs.
-     * Every segment must be aligned at 8 byte boundary with null byte padding
-     * between adjacent segments if required.
-     * For segements which are not present both offset and length must be 0 in
-     * the header.
-     * Currently only xclbin0\0 is recognized as file magic. In future if/when file
-     * format is updated the magic string will be changed to xclbin1\0 and so on.
-     */
     enum XCLBIN_MODE {
+        // Use with flat flow where the full FPGA is re-programmed
         XCLBIN_FLAT,
+        // Used with Partial Reconfig flow
         XCLBIN_PR,
+        // Unused at the moment
         XCLBIN_TANDEM_STAGE2,
+        // Unused at the moment
         XCLBIN_TANDEM_STAGE2_WITH_PR,
+        // Used in HW emulation
         XCLBIN_HW_EMU,
+        // Used in SW emulation
         XCLBIN_SW_EMU,
         XCLBIN_MODE_MAX
     };
+
+    /**
+     * Note that xclBin format has been deprecated from 2017.1 release onwards.
+     * SDAccel has switched to AXLF also known as xclbin2 -- look for struct axlf
+     * below.
+     */
 
     struct xclBin {
         char m_magic[8];                    /* should be xclbin0\0  */
@@ -99,7 +101,7 @@ extern "C" {
     struct axlf_header {
         uint64_t m_length;                  /* Total size of the xclbin file */
         uint64_t m_timeStamp;               /* Number of seconds since epoch when xclbin was created */
-        uint64_t m_featureRomTimeStamp;     /* TimeSinceEpoch of the featureRom */
+        uint64_t m_featureRomTimeStamp;     /* TimeSinceEpoch of the Feature ROM in the DSA */
         uint32_t m_version;                 /* Tool version used to create xclbin */
         uint32_t m_mode;                    /* XCLBIN_MODE */
         uint64_t m_platformId;              /* 64 bit platform ID: vendor-device-subvendor-subdev */
@@ -112,9 +114,9 @@ extern "C" {
 
     struct axlf {
         char m_magic[8];                            /* Should be "xclbin2\0"  */
-        unsigned char m_cipher[32];                 /* Hmac output digest */
+        unsigned char m_cipher[32];                 /* HMAC output digest */
         unsigned char m_keyBlock[256];              /* Signature for validation of binary */
-        uint64_t m_uniqueId;                        /* axlf's uniqueId, use it to skip redownload etc */
+        uint64_t m_uniqueId;                        /* axlf's uniqueId, use it to skip re-download etc */
         struct axlf_header m_header;                /* Inline header */
         struct axlf_section_header m_sections[1];   /* One or more section headers follow */
     };
