@@ -41,15 +41,25 @@
 #define SHIM_O2
 #endif
 
+#if defined(AWS_EDMA)
+        #define DMA_PATHNAME "/dev/edma"
+        #define DMA_PATHH2C "_queue_"
+        #define DMA_PATHC2H "_queue_"
+#else
+        #define DMA_PATHNAME "/dev/xdma"
+        #define DMA_PATHH2C "_h2c_"
+        #define DMA_PATHC2H "_c2h_"
+#endif
+
 namespace awsbwhal {
     class DMAChannelManager
     {
     public:
         DMAChannelManager(unsigned deviceIndex, unsigned count, std::ios_base::openmode mode) : mCount(count) {
-            std::string baseName("/dev/xdma");
+            std::string baseName(DMA_PATHNAME);
             baseName += std::to_string(deviceIndex);
             assert((mode == std::ios_base::in) || (mode == std::ios_base::out));
-            const char *suffix = (mode == std::ios_base::out) ? "_h2c_" : "_c2h_";
+            const char *suffix = (mode == std::ios_base::out) ? DMA_PATHH2C : DMA_PATHC2H;
             baseName += suffix;
             for (mIndex = 0; mIndex < static_cast<int>(mCount); ++mIndex) {
                 std::string fileName(baseName);
@@ -126,12 +136,16 @@ namespace awsbwhal {
 
         // TODO: Make pwrite64 and pread64 use RAII for the channel resource
         ssize_t pwrite64(const void* buf, size_t count, off64_t offset) {
+            if(count == 0) // Nothing to do
+                return 0;
             int fd = mWrite.acquireDMAChannel();
             ssize_t rc = pwrite(fd, buf, count, offset);
             mWrite.releaseDMAChannel(fd);
             return rc;
         }
         ssize_t pread64(void* buf, size_t count, off64_t offset) {
+            if(count == 0) // Nothing to do
+                return 0;
             int fd = mRead.acquireDMAChannel();
             ssize_t rc = pread(fd, buf, count, offset);
             mRead.releaseDMAChannel(fd);
@@ -139,6 +153,8 @@ namespace awsbwhal {
         }
         // Like memset but using pwrite
         void pset64(const void* buf, size_t count, off64_t offset, unsigned rep) {
+            if(count == 0) // Nothing to do
+                return;
             int fd = mWrite.acquireDMAChannel();
             off64_t curr = offset;
             while (rep-- > 0) {

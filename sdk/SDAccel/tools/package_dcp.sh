@@ -70,7 +70,14 @@ for (( i = 0; i < ${#args[@]}; i++ )); do
     -k|-kernel)
       kernel=${args[$i + 1]}
       echo $kernel
-      break
+      #break
+      let "i = i + 1"
+    ;;
+    -e|-exe)
+      exe=${args[$i + 1]}
+      echo $exe
+      #break
+      let "i = i + 1"
     ;;
     *)
       err_msg "Invalid option: $arg\n"
@@ -79,11 +86,11 @@ for (( i = 0; i < ${#args[@]}; i++ )); do
   esac
 done
 
-if [[ -x "$kernel" ]]
+if [[ -x "$exe" ]]
 then
-    echo "File '$kernel' is executable"
+    echo "File '$exe' is executable"
 else
-    echo "File '$kernel' is not executable or found"
+    echo "File '$exe' is not executable or found"
     exit 1
 fi
 
@@ -92,10 +99,7 @@ timestamp=$(date +"%y_%m_%d-%H%M%S")
 mkdir to_aws
 
 #split xcp file
-$XILINX_SDX/runtime/bin/xclbinsplit -o ${kernel} xclbin/krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.xclbin
-
-#OLD LOCATION of XCP file
-#$XILINX_SDX/runtime/bin/xclbinsplit -o ${kernel} _xocc_link_krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3_krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.dir/impl/build/system/krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3/bitstream/krnl_${kernel}.hw.xilinx_minotaur-vu9p-f1_4ddr-xpr_3_3.xcp
+xclbinsplit -o ${kernel} xclbin/${kernel}.hw.xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0.xclbin
 
 #rename .bit to .dcp
 mv ${kernel}-primary.bit to_aws/${kernel}_${timestamp}_SH_CL_routed.dcp
@@ -181,6 +185,6 @@ exec 3>&-
 tar -cf ${kernel}_${timestamp}_Developer_CL.tar to_aws/${kernel}_${timestamp}_SH_CL_routed.dcp to_aws/${kernel}_${timestamp}_manifest.txt
 
 #Create .awsxclbin
-cat ${kernel}-meta.xml >> ${kernel}_${timestamp}.awsxclbin
+cat ${kernel}-xclbin.xml >> ${kernel}_${timestamp}.awsxclbin
 echo ${kernel}_afi_id.txt >> ${kernel}_${timestamp}.awsxclbin
   

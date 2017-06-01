@@ -1,6 +1,6 @@
 /**
- * Xilinx SDAccel xclbin container definition
- * Copyright (C) 2015-2016, Xilinx Inc - All rights reserved
+ *  Xilinx SDAccel xclbin container definition
+ *  Copyright (C) 2015-2017, Xilinx Inc - All rights reserved
  */
 
 #ifndef _XCLBIN_H_
@@ -11,6 +11,7 @@
 #elif defined(__cplusplus)
 #include <cstdlib>
 #include <cstdint>
+#include <algorithm>
 #else
 #include <stdlib.h>
 #include <stdint.h>
@@ -20,23 +21,27 @@
 extern "C" {
 #endif
 
-    /**
-     * Container format for Xilinx bitstreams, metadata and other
-     * binary blobs.
-     * Every segment must be aligned at 8 byte boundary with null byte padding
-     * between adjacent segments if required.
-     * For segements which are not present both offset and length must be 0 in
-     * the header.
-     * Currently only xclbin0\0 is recognized as file magic. In future if/when file
-     * format is updated the magic string will be changed to xclbin1\0 and so on.
-     */
     enum XCLBIN_MODE {
+        // Use with flat flow where the full FPGA is re-programmed
         XCLBIN_FLAT,
+        // Used with Partial Reconfig flow
         XCLBIN_PR,
+        // Unused at the moment
         XCLBIN_TANDEM_STAGE2,
+        // Unused at the moment
         XCLBIN_TANDEM_STAGE2_WITH_PR,
+        // Used in HW emulation
+        XCLBIN_HW_EMU,
+        // Used in SW emulation
+        XCLBIN_SW_EMU,
         XCLBIN_MODE_MAX
     };
+
+    /**
+     * Note that xclBin format has been deprecated from 2017.1 release onwards.
+     * SDAccel has switched to AXLF also known as xclbin2 -- look for struct axlf
+     * below.
+     */
 
     struct xclBin {
         char m_magic[8];                    /* should be xclbin0\0  */
@@ -63,8 +68,8 @@ extern "C" {
     };
 
     /*
-     *  XCLBIN1 LAYOUT
-     *  --------------
+     *  AXLF LAYOUT
+     *  -----------
      *
      *  -----------------------------------------
      *  | Magic                                 |
@@ -77,48 +82,66 @@ extern "C" {
      *  -----------------------------------------
      *
      */
-    enum xclBin1SectionKind {
-        BITSTREAM,
-        CLEARING_BITSTREAM,
-        EMBEDDED_METADATA,
-        FIRMWARE,
-        DEBUG_DATA
+
+    enum axlf_section_kind {
+        BITSTREAM = 0,
+        CLEARING_BITSTREAM = 1,
+        EMBEDDED_METADATA = 2,
+        FIRMWARE = 3,
+        DEBUG_DATA = 4
     };
 
-    struct xclBin1SectionHeader {
-        unsigned m_sectionKind;             /* Section type */
-        unsigned short m_freq[4];           /* Target frequency for the section if applicable */
+    struct axlf_section_header {
+        uint32_t m_sectionKind;             /* Section type */
         char m_sectionName[16];             /* Examples: "stage2", "clear1", "clear2", "ocl1", "ocl2, "ublaze" */
-        unsigned m_customFlagsA;            /* Example: Number of Kernels in this region */
-        unsigned m_customFlagsB;            /* Example: Number of Kernels in this region */
         uint64_t m_sectionOffset;           /* File offset of section data */
         uint64_t m_sectionSize;             /* Size of section data */
     };
 
-    struct xclBin1Header {
+    struct axlf_header {
         uint64_t m_length;                  /* Total size of the xclbin file */
         uint64_t m_timeStamp;               /* Number of seconds since epoch when xclbin was created */
-        unsigned m_version;                 /* Tool version used to create xclbin */
-        unsigned m_mode;                    /* XCLBIN_MODE */
+        uint64_t m_featureRomTimeStamp;     /* TimeSinceEpoch of the Feature ROM in the DSA */
+        uint32_t m_version;                 /* Tool version used to create xclbin */
+        uint32_t m_mode;                    /* XCLBIN_MODE */
         uint64_t m_platformId;              /* 64 bit platform ID: vendor-device-subvendor-subdev */
         uint64_t m_featureId;               /* 64 bit feature id */
-        char m_nextXclBin[16];              /* Name of next xclbin file in the daisy chain */
-        char m_debugBin[16];                /* Name of binary with debug information */
-        unsigned m_numSections;             /* Number of section headers */
+        unsigned char m_platformVBNV[64];   /* e.g. xilinx:xil-accel-rd-ku115:4ddr-xpr:3.4: null terminated */
+        char m_next_axlf[16];               /* Name of next xclbin file in the daisy chain */
+        char m_debug_bin[16];               /* Name of binary with debug information */
+        uint32_t m_numSections;             /* Number of section headers */
     };
 
-    struct xclBin1 {
-        char m_magic[8];                            /* Should be xclbin1\0  */
-        uint64_t m_signature[4];                    /* File signature for validation of binary */
-        struct xclBin1Header m_header;              /* Inline header */
-        struct xclBin1SectionHeader m_sections[1];  /* One or more section headers follow */
+    struct axlf {
+        char m_magic[8];                            /* Should be "xclbin2\0"  */
+        unsigned char m_cipher[32];                 /* HMAC output digest */
+        unsigned char m_keyBlock[256];              /* Signature for validation of binary */
+        uint64_t m_uniqueId;                        /* axlf's uniqueId, use it to skip re-download etc */
+        struct axlf_header m_header;                /* Inline header */
+        struct axlf_section_header m_sections[1];   /* One or more section headers follow */
     };
 
+    //xilinx internal
+    struct xlnx_bitstream {
+        uint8_t m_freq[8];
+        char bits[1];
+    };
+
+# ifdef __cplusplus
+    namespace xclbin {
+      inline const axlf_section_header*
+      get_axlf_section(const axlf* top, axlf_section_kind kind)
+      {
+        auto begin = top->m_sections;
+        auto end = begin + top->m_header.m_numSections;
+        auto itr = std::find_if(begin,end,[kind](const axlf_section_header& sec) { return sec.m_sectionKind==kind; });
+        return (itr!=end) ? &(*itr) : nullptr;
+      }
+    }
+# endif
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-
-// XSIP watermark, do not delete 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689
