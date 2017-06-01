@@ -2,7 +2,7 @@
 
 Software(SW) and Hardware(HW) Emulation modes in SDAccel are now supported.  In addition, FPGA targeted HW builds are now supported.  The AFI generation and runtime flow is coming soon
 
-The quickstart examples require Xilinx 2017.1 SDx tool set.  A pre-released FPGA Developer AMI version (1.3.X) is available and has been shared with your AWS account.  Current AMI ID:  ami-f1365be7
+The quickstart examples require Xilinx 2017.1 SDx tool set.  A pre-released FPGA Developer AMI version (1.3.X) is available and has been shared with your AWS account.  Current AMI ID:  ami-ff83cee9 
 
 ## Get Started on SDAccel
 
