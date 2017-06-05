@@ -10,8 +10,12 @@
 "FpgaImageId": "afi-092bb7618c88a26b3", 
 "FpgaImageGlobalId": "agfi-0fe3ee26e33772da2"
 
----512 (systolic)---
+---512, 10-wide, 34-bit compare (systolic)---
 "FpgaImageId": "afi-0ba11a4902a104104", 
 "FpgaImageGlobalId": "agfi-0de03e7794dda1b2d"
+
+---512, 8-wide, 40-bit compare (systolic)---
+"FpgaImageId": "afi-0fa291d70f8998a54", 
+"FpgaImageGlobalId": "agfi-00fa3636cb6ffacdb"
 
 sudo rmmod edma-drv && sudo insmod ~/src/project_data/aws-fpga/sdk/linux_kernel_drivers/edma/edma-drv.ko
