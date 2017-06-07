@@ -29,6 +29,10 @@ SRC2 = test_hello_world_pcie.c
 OBJ2 = $(SRC2:.c=.o)
 BIN2 = test_hello_world_pcie
 
+SRC3 = sa-mm-fpga.c
+OBJ3 = $(SRC3:.c=.o)
+BIN3 = sa-mm-fpga 
+
 all: check_env $(BIN1) $(BIN2)
 
 $(BIN1): $(OBJ1)
@@ -37,8 +41,11 @@ $(BIN1): $(OBJ1)
 $(BIN2): $(OBJ2)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
+$(BIN3): $(OBJ3)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
+
 clean:
-	rm -f *.o $(BIN1) $(BIN2)
+	rm -f *.o $(BIN1) $(BIN2) $(BIN3)
 
 check_env:
 ifndef SDK_DIR
