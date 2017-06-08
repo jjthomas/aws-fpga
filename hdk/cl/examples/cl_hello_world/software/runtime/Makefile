@@ -17,7 +17,9 @@
 INCLUDES = -I$(SDK_DIR)/userspace/include
 
 CC = gcc
+CXX = g++
 CFLAGS = -DCONFIG_LOGLEVEL=4 -std=gnu99 -g -Wall -Werror $(INCLUDES)
+CPLUSFLAGS = -DCONFIG_LOGLEVEL=4 -std=c++11 $(INCLUDES)
 
 LDLIBS = -lfpga_mgmt -lrt -lpthread
 
@@ -29,11 +31,11 @@ SRC2 = test_hello_world_pcie.c
 OBJ2 = $(SRC2:.c=.o)
 BIN2 = test_hello_world_pcie
 
-SRC3 = sa-mm-fpga.c
+SRC3 = sa-mm-fpga.cpp
 OBJ3 = $(SRC3:.c=.o)
 BIN3 = sa-mm-fpga 
 
-all: check_env $(BIN1) $(BIN2)
+all: check_env $(BIN1) $(BIN2) $(BIN3)
 
 $(BIN1): $(OBJ1)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
@@ -42,7 +44,7 @@ $(BIN2): $(OBJ2)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 $(BIN3): $(OBJ3)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
+	$(CXX) $(CPLUSFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 clean:
 	rm -f *.o $(BIN1) $(BIN2) $(BIN3)

@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <cassert>
 
-// #define FPGA 0
+#define FPGA 1
 #ifdef FPGA
 #include <stdio.h>
 #include <fcntl.h>
@@ -17,14 +17,17 @@
 #include <unistd.h>
 #include <poll.h>
 
+extern "C" {
 #include <fpga_pci.h>
 #include <fpga_mgmt.h>
 #include <utils/lcd.h>
+}
 
 static uint16_t pci_vendor_id = 0x1D0F; /* Amazon PCI Vendor ID */
 static uint16_t pci_device_id = 0xF000;
 
 const struct logger *logger = &logger_stdout;
+int fd = -1;
 
 static int 
 check_slot_config()
@@ -94,10 +97,6 @@ static int fpga_setup() {
 out:
   return rc;
 }
-
-
-
-int fd = -1;
 #endif
 
 static inline uint64_t
@@ -240,7 +239,12 @@ void merge_lists(int lower, int upper) {
 int main(int argc, char **argv) {
 #ifdef FPGA
   int rc = fpga_setup();
-  fail_on(rc, out, "fpga_setup failed");
+  if (rc > 0) { 
+    printf("setup failed...\n");
+    if (fd > 0) {
+      close(fd);
+    }
+  }
 #endif
   int CHARS = atoi(argv[1]);
   
@@ -349,7 +353,6 @@ int main(int argc, char **argv) {
   printf("%d\n", ranks[0]);
   printf("%d\n", gap);
 #ifdef FPGA
-out:
   if (fd >= 0) {
     close(fd);
   }
