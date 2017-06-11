@@ -20,7 +20,7 @@
 #define _XCL_PERF_H_
 
 // DSA version (e.g., XCL_PLATFORM=xilinx_adm-pcie-7v3_1ddr_1_1)
-// TODO: this will eventually be read from the device using lspci (see CR 870994)
+
 #define DSA_MAJOR_VERSION 1
 #define DSA_MINOR_VERSION 1
 
@@ -28,19 +28,10 @@
 
 #define XPAR_AXI_PERF_MON_0_NUMBER_SLOTS                2
 
-#if 1
 #define XPAR_AXI_PERF_MON_0_SLOT0_NAME                  "OCL Region"
 #define XPAR_AXI_PERF_MON_0_SLOT1_NAME                  "Host"
 #define XPAR_AXI_PERF_MON_0_OCL_REGION_SLOT             0
 #define XPAR_AXI_PERF_MON_0_HOST_SLOT                   1
-#else
-// Uncomment for DSA v1.0
-// NOTE: since device profiling didn't work in v1.0, we'll leave this commented
-//#define XPAR_AXI_PERF_MON_0_SLOT0_NAME                  "Host"
-//#define XPAR_AXI_PERF_MON_0_SLOT1_NAME                  "OCL Region"
-//#define XPAR_AXI_PERF_MON_0_HOST_SLOT                   0
-//#define XPAR_AXI_PERF_MON_0_OCL_REGION_SLOT             1
-#endif
 
 #define XPAR_AXI_PERF_MON_0_OCL_REGION_SLOT2            2
 #define XPAR_AXI_PERF_MON_0_OCL_REGION_SLOT3            3
@@ -49,12 +40,12 @@
 #define XPAR_AXI_PERF_MON_0_OCL_REGION_SLOT6            6
 #define XPAR_AXI_PERF_MON_0_OCL_REGION_SLOT7            7
 
-#define XPAR_AXI_PERF_MON_0_SLOT2_NAME                  "OCL Region, Master 2"
-#define XPAR_AXI_PERF_MON_0_SLOT3_NAME                  "OCL Region, Master 3"
-#define XPAR_AXI_PERF_MON_0_SLOT4_NAME                  "OCL Region, Master 4"
-#define XPAR_AXI_PERF_MON_0_SLOT5_NAME                  "OCL Region, Master 5"
-#define XPAR_AXI_PERF_MON_0_SLOT6_NAME                  "OCL Region, Master 6"
-#define XPAR_AXI_PERF_MON_0_SLOT7_NAME                  "OCL Region, Master 7"
+#define XPAR_AXI_PERF_MON_0_SLOT2_NAME                  "OCL Region Master 2"
+#define XPAR_AXI_PERF_MON_0_SLOT3_NAME                  "OCL Region Master 3"
+#define XPAR_AXI_PERF_MON_0_SLOT4_NAME                  "OCL Region Master 4"
+#define XPAR_AXI_PERF_MON_0_SLOT5_NAME                  "OCL Region Master 5"
+#define XPAR_AXI_PERF_MON_0_SLOT6_NAME                  "OCL Region Master 6"
+#define XPAR_AXI_PERF_MON_0_SLOT7_NAME                  "OCL Region Master 7"
 
 #define XPAR_AXI_PERF_MON_0_SLOT0_DATA_WIDTH            512
 #define XPAR_AXI_PERF_MON_0_SLOT1_DATA_WIDTH            512
@@ -168,9 +159,9 @@
 #define XPAR_AXI_PERF_MON_2_TRACE_WORD_WIDTH            64
 #define XPAR_AXI_PERF_MON_2_TRACE_NUMBER_SAMPLES        4096
 
-#define XPAR_AXI_PERF_MON_2_TRACE_OFFSET_0              -0x03000
-#define XPAR_AXI_PERF_MON_2_TRACE_OFFSET_1              -0x02000
-#define XPAR_AXI_PERF_MON_2_TRACE_OFFSET_2              -0x01000
+#define XPAR_AXI_PERF_MON_2_TRACE_OFFSET_0              0x01000
+#define XPAR_AXI_PERF_MON_2_TRACE_OFFSET_1              0x02000
+#define XPAR_AXI_PERF_MON_2_TRACE_OFFSET_2              0x03000
 
 /************************ APM Profile Counters ********************************/
 
@@ -195,6 +186,9 @@
 #define XAPM_METRIC_COUNT5_NAME           "Total Read Latency"
 #define XAPM_METRIC_COUNT6_NAME           "Min/Max Write Latency"
 #define XAPM_METRIC_COUNT7_NAME           "Min/Max Read Latency"
+
+/************************ APM Debug Counters ********************************/
+#define XAPM_DEBUG_METRIC_COUNTERS_PER_SLOT     4  //debug is only interested in 4 metric counters
 
 /************************ APM Trace Stream ************************************/
 
@@ -241,6 +235,7 @@ enum xclPerfMonEndEvent {
 	XCL_PERF_MON_END_RESPONSE = 1
 };
 
+/* Performance monitor counter types */
 enum xclPerfMonCounterType {
   XCL_PERF_MON_WRITE_BYTES = 0,
   XCL_PERF_MON_WRITE_TRANX = 1,
@@ -248,6 +243,68 @@ enum xclPerfMonCounterType {
   XCL_PERF_MON_READ_BYTES = 3,
   XCL_PERF_MON_READ_TRANX = 4,
   XCL_PERF_MON_READ_LATENCY = 5
+};
+
+/*
+ * Performance monitor event types
+ * NOTE: these are the same values used by SDSoC
+ */
+enum xclPerfMonEventType {
+  XCL_PERF_MON_START_EVENT = 0x4,
+  XCL_PERF_MON_END_EVENT = 0x5
+};
+
+/*
+ * Performance monitor IDs for host SW events
+ * NOTE: HW events start at 0, SDSoC SW events start at 4000
+ */
+enum xclPerfMonEventID {
+  XCL_PERF_MON_IGNORE_EVENT = 0,
+  XCL_PERF_MON_GENERAL_ID = 3000,
+  XCL_PERF_MON_QUEUE_ID = 3001,
+  XCL_PERF_MON_READ_ID = 3002,
+  XCL_PERF_MON_WRITE_ID = 3003,
+  XCL_PERF_MON_API_GET_PLATFORM_ID = 3005,
+  XCL_PERF_MON_API_GET_PLATFORM_INFO_ID = 3006,
+  XCL_PERF_MON_API_GET_DEVICE_ID = 3007,
+  XCL_PERF_MON_API_GET_DEVICE_INFO_ID = 3008,
+  XCL_PERF_MON_API_BUILD_PROGRAM_ID = 3009,
+  XCL_PERF_MON_API_CREATE_CONTEXT_ID = 3010,
+  XCL_PERF_MON_API_CREATE_CONTEXT_TYPE_ID = 3011,
+  XCL_PERF_MON_API_CREATE_COMMAND_QUEUE_ID = 3012,
+  XCL_PERF_MON_API_CREATE_PROGRAM_BINARY_ID = 3013,
+  XCL_PERF_MON_API_CREATE_BUFFER_ID = 3014,
+  XCL_PERF_MON_API_CREATE_IMAGE_ID = 3015,
+  XCL_PERF_MON_API_CREATE_KERNEL_ID = 3016,
+  XCL_PERF_MON_API_KERNEL_ARG_ID = 3017,
+  XCL_PERF_MON_API_WAIT_FOR_EVENTS_ID = 3018,
+  XCL_PERF_MON_API_READ_BUFFER_ID = 3019,
+  XCL_PERF_MON_API_WRITE_BUFFER_ID = 3020,
+  XCL_PERF_MON_API_READ_IMAGE_ID = 3021,
+  XCL_PERF_MON_API_WRITE_IMAGE_ID = 3022,
+  XCL_PERF_MON_API_MIGRATE_MEM_ID = 3023,
+  XCL_PERF_MON_API_MIGRATE_MEM_OBJECTS_ID = 3024,
+  XCL_PERF_MON_API_MAP_BUFFER_ID = 3025,
+  XCL_PERF_MON_API_UNMAP_MEM_OBJECT_ID = 3026,
+  XCL_PERF_MON_API_NDRANGE_KERNEL_ID = 3027,
+  XCL_PERF_MON_API_TASK_ID = 3028,
+  XCL_PERF_MON_KERNEL0_ID = 3100,
+  XCL_PERF_MON_KERNEL1_ID = 3101,
+  XCL_PERF_MON_KERNEL2_ID = 3102,
+  XCL_PERF_MON_KERNEL3_ID = 3103,
+  XCL_PERF_MON_KERNEL4_ID = 3104,
+  XCL_PERF_MON_KERNEL5_ID = 3105,
+  XCL_PERF_MON_KERNEL6_ID = 3106,
+  XCL_PERF_MON_KERNEL7_ID = 3107,
+  XCL_PERF_MON_CU0_ID = 3200,
+  XCL_PERF_MON_CU1_ID = 3201,
+  XCL_PERF_MON_CU2_ID = 3202,
+  XCL_PERF_MON_CU3_ID = 3203,
+  XCL_PERF_MON_CU4_ID = 3204,
+  XCL_PERF_MON_CU5_ID = 3205,
+  XCL_PERF_MON_CU6_ID = 3206,
+  XCL_PERF_MON_CU7_ID = 3207,
+  XCL_PERF_MON_PROGRAM_END = 4090
 };
 
 /* Performance monitor counter results */
@@ -296,5 +353,3 @@ typedef struct {
 } xclTraceResultsVector;
 
 #endif
-
-// XSIP watermark, do not delete 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689
