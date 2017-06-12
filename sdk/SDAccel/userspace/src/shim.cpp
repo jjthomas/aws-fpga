@@ -62,7 +62,7 @@
 #ifdef INTERNAL_TESTING
 
 #include "xdma/xdma_ioctl.h"
-#include "mgmt/mgmt-ioctl.h"
+#include "internal_use_only_mgmt/mgmt-ioctl.h"
 
 #else
 
@@ -191,6 +191,18 @@ namespace awsbwhal {
                 return -EIO;
             return totalSize;
         }
+        case XCL_ADDR_SPACE_DEVICE_PERFMON:
+        {
+#ifdef INTERNAL_TESTING
+            const unsigned int pf_bar = ACCELERATOR_BAR;
+#else
+            const unsigned int pf_bar = APP_PF_BAR0;
+#endif
+            if (pcieBarWrite(pf_bar, offset, hostBuf, size) == 0) {
+                return size;
+            }
+            return -EIO;
+        }
         case XCL_ADDR_KERNEL_CTRL:
         {
             if (mLogStream.is_open()) {
@@ -243,13 +255,18 @@ namespace awsbwhal {
                 return -EIO;
             return totalSize;
         }
-//        case XCL_ADDR_SPACE_DEVICE_PERFMON:
-//        {
-//            if (pcieBarRead(PERFMON_BAR, offset, hostBuf, size) == 0) {
-//                return size;
-//            }
-//            return -1;
-//        }
+        case XCL_ADDR_SPACE_DEVICE_PERFMON:
+        {
+#ifdef INTERNAL_TESTING
+            const unsigned int pf_bar = ACCELERATOR_BAR;
+#else
+            const unsigned int pf_bar = APP_PF_BAR0;
+#endif
+            if (pcieBarRead(pf_bar, offset, hostBuf, size) == 0) {
+                return size;
+            }
+            return -EIO;
+        }
         case XCL_ADDR_KERNEL_CTRL:
         {
 #ifdef INTERNAL_TESTING
