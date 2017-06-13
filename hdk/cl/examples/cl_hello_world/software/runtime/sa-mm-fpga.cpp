@@ -239,7 +239,7 @@ void merge_lists(int lower, int upper) {
 int main(int argc, char **argv) {
 #ifdef FPGA
   int rc = fpga_setup();
-  if (rc > 0) { 
+  if (rc > 0) {
     printf("setup failed...\n");
     if (fd > 0) {
       close(fd);
