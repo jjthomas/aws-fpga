@@ -129,6 +129,11 @@ typedef struct __attribute__((packed)) {
   unsigned int first: 20;
 } p;
 
+typedef struct {
+  int start;
+  int end;
+} bound;
+
 p *data1;
 p *merge_buf;
 p *sort_buf;
@@ -261,6 +266,11 @@ int main(int argc, char **argv) {
   num_lists = buf_size / LIST_SIZE;
   data1 = (p *)malloc(sizeof(p) * buf_size);
   int *ranks = (int *)malloc(sizeof(int) * chars);
+  bound *bounds1 = (bound *)malloc(sizeof(bound) * chars);
+  bound *bounds2 = (bound *)malloc(sizeof(bound) * chars);
+  int num_bounds = 1;
+  bound *cur_bounds = bounds1;
+  cur_bounds[0] = (bound){0, chars};
   merge_buf = (p *)malloc(sizeof(p) * buf_size);
   // only for CPU-only version
   sort_buf = (p *)malloc(sizeof(p) * LIST_SIZE);
@@ -289,58 +299,46 @@ int main(int argc, char **argv) {
     uint64_t sort_start = rdtsc();
     do_full_sort();
     sort_time += rdtsc() - sort_start;
-    int el_to_check = LIST_SIZE;
-    while (el_to_check < buf_size) {
-      p *prev = LOOKUP_GLOB(el_to_check - 1);
-      p *next = LOOKUP_GLOB(el_to_check);
-      if (prev->first == next->first) {
-	int lower_bound = el_to_check - 1;
-	int upper_bound = el_to_check;
-        while (lower_bound >= 0 && LOOKUP_GLOB(lower_bound)->first == prev->first) {
-          lower_bound--;
-	}
-	lower_bound++;
-        while (upper_bound < buf_size && LOOKUP_GLOB(upper_bound)->first == prev->first) {
-          upper_bound++;
-	}
-	// printf("%d %d %d %d\n", upper_bound, buf_size, LOOKUP_GLOB(upper_bound)->first, prev->first);
-	// printf("%d %d\n", lower_bound, upper_bound);
-        merge_lists(lower_bound, upper_bound);
-	// TODO remove
-	// assert(verify_sorted(lower_bound, upper_bound));
-	el_to_check = ((upper_bound >> LIST_BITS) + 1) << LIST_BITS;
-      } else {
-        el_to_check += LIST_SIZE;
-      }
+    for (int i = 0; i < num_bounds; i++) {
+      merge_lists(cur_bounds[i].start, cur_bounds[i].end);
     }
 
     uint64_t update_start = rdtsc();
-    bool dups = false;
-    int cur_char = 1;
-    for (int i = 0; i < chars; i++) {
-      p *cur = LOOKUP_GLOB(i);
-      if (i > 0) {
-	p *prev = LOOKUP_GLOB(i - 1);
-	if (cur->first == prev->first && cur->second == prev->second) {
-          dups = true;
-	} else {
-          cur_char++;
-	}
+    bound *next_bounds = (cur_bounds == bounds1) ? bounds2 : bounds1;
+    int next_num_bounds = 0;
+    for (int i = 0; i < num_bounds; i++) {
+      int cur_start = cur_bounds[i].start;
+      ranks[LOOKUP_GLOB(cur_start)->i] = cur_start + 1;
+      for (int j = cur_bounds[i].start + 1; j < cur_bounds[i].end; j++) {
+        p *cur = LOOKUP_GLOB(j);
+        p *prev = LOOKUP_GLOB(j - 1);
+        if (cur->first != prev->first || cur->second != prev->second) {
+          if (j - cur_start > 1) {
+            next_bounds[next_num_bounds++] = (bound){cur_start, j};
+          }
+          cur_start = j;
+        }
+        ranks[cur->i] = cur_start + 1;
       }
-      ranks[cur->i] = cur_char;
+      if (cur_bounds[i].end - cur_start > 1) {
+        next_bounds[next_num_bounds++] = (bound){cur_start, cur_bounds[i].end};
+      }
     }
-    if (!dups) {
+    if (next_num_bounds == 0) {
       update_time += rdtsc() - update_start;
       break;
     }
-    for (int i = 0; i < chars; i++) {
-      p *cur = LOOKUP_GLOB(i);
-      cur->first = ranks[cur->i];
-      cur->second = (cur->i < chars - gap) ? ranks[cur->i + gap] : 0;
+    for (int i = 0; i < num_bounds; i++) {
+      for (int j = cur_bounds[i].start; j < cur_bounds[i].end; j++) {
+        p *cur = LOOKUP_GLOB(j);
+        cur->first = ranks[cur->i];
+        cur->second = (cur->i < chars - gap) ? ranks[cur->i + gap] : 0;
+      }
     }
     update_time += rdtsc() - update_start;
+    cur_bounds = next_bounds;
+    num_bounds = next_num_bounds;
     gap *= 2;
-    // printf("new gap %d\n", gap);
   }
   gettimeofday(&end, 0);
   timersub(&end, &start, &diff);
