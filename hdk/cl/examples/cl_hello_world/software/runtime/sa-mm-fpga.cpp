@@ -265,7 +265,7 @@ int main(int argc, char **argv) {
   buf_size = ((chars - 1) / 4096 + 1) * 4096;
   num_lists = buf_size / LIST_SIZE;
   data1 = (p *)malloc(sizeof(p) * buf_size);
-  int *ranks = (int *)malloc(sizeof(int) * chars);
+  int *ranks = (int *)calloc(chars * 2, sizeof(int));
   bound *bounds1 = (bound *)malloc(sizeof(bound) * chars);
   bound *bounds2 = (bound *)malloc(sizeof(bound) * chars);
   int num_bounds = 1;
@@ -295,13 +295,16 @@ int main(int argc, char **argv) {
   uint64_t total_start = rdtsc();
   uint64_t sort_time = 0;
   uint64_t update_time = 0;
+  uint64_t merge_time = 0;
   while (true) {
     uint64_t sort_start = rdtsc();
     do_full_sort();
     sort_time += rdtsc() - sort_start;
+    uint64_t merge_start = rdtsc();
     for (int i = 0; i < num_bounds; i++) {
       merge_lists(cur_bounds[i].start, cur_bounds[i].end);
     }
+    merge_time += rdtsc() - merge_start;
 
     uint64_t update_start = rdtsc();
     bound *next_bounds = (cur_bounds == bounds1) ? bounds2 : bounds1;
@@ -332,7 +335,7 @@ int main(int argc, char **argv) {
       for (int j = cur_bounds[i].start; j < cur_bounds[i].end; j++) {
         p *cur = LOOKUP_GLOB(j);
         cur->first = ranks[cur->i];
-        cur->second = (cur->i < chars - gap) ? ranks[cur->i + gap] : 0;
+        cur->second = ranks[cur->i + gap];
       }
     }
     update_time += rdtsc() - update_start;
@@ -343,7 +346,7 @@ int main(int argc, char **argv) {
   gettimeofday(&end, 0);
   timersub(&end, &start, &diff);
   printf("gettimeofday: %ld.%06ld\n", (long)diff.tv_sec, (long)diff.tv_usec);
-  printf("%lld/%lld/%lld\n", sort_time, update_time, rdtsc() - total_start);
+  printf("%lld/%lld/%lld/%lld\n", sort_time, update_time, merge_time, rdtsc() - total_start);
   printf("%d\n", ranks[0]);
   printf("%d\n", gap);
 #ifdef FPGA
