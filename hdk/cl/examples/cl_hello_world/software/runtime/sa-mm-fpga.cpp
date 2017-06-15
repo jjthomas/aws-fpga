@@ -6,6 +6,7 @@
 #include <limits.h>
 #include <algorithm>
 #include <cassert>
+#include <immintrin.h>
 
 // #define FPGA 1
 #ifdef FPGA
@@ -133,6 +134,8 @@ p *merge_buf;
 p *sort_buf;
 int buf_size;
 int num_lists;
+
+#define TUP_MASK (0x000000FFFFFFFFFFL)
 
 #define LIST_BITS 9
 #define LIST_SIZE (1 << LIST_BITS)
@@ -265,6 +268,7 @@ int main(int argc, char **argv) {
   num_lists = buf_size / LIST_SIZE;
   data1 = (p *)malloc(sizeof(p) * buf_size);
   int *ranks = (int *)calloc(2 * chars, sizeof(int));
+  int *new_idxs = (int *)malloc(sizeof(int) * chars);
   merge_buf = (p *)malloc(sizeof(p) * buf_size);
   // only for CPU-only version
   sort_buf = (p *)malloc(sizeof(p) * LIST_SIZE);
@@ -322,22 +326,18 @@ int main(int argc, char **argv) {
     merge_time += rdtsc() - merge_start;
 
     uint64_t update_start = rdtsc();
-    bool dups = false;
     int cur_char = 1;
-    for (int i = 0; i < chars; i++) {
-      p *cur = LOOKUP_GLOB(i);
-      if (i > 0) {
-	p *prev = LOOKUP_GLOB(i - 1);
-	if (cur->first == prev->first && cur->second == prev->second) {
-          dups = true;
-	} else {
-          cur_char++;
-	}
-      }
-      ranks[cur->i] = cur_char;
+    __m256i zero = _mm256_set1_epi32(0);
+    ranks[LOOKUP_GLOB(0)->i] = cur_char;
+    for (int i = 1; i < chars; i++) {
+      uint64_t cur = *(uint64_t *)LOOKUP_GLOB(i);
+      uint64_t prev = *(uint64_t *)LOOKUP_GLOB(i - 1);
+      cur_char += ((cur & TUP_MASK) != (prev & TUP_MASK));
+      ranks[LOOKUP_GLOB(i)->i] = cur_char;
     }
-    if (!dups) {
-      update_time += rdtsc() - update_start;
+    update_time += rdtsc() - update_start;
+    if (cur_char == chars) {
+      // update_time += rdtsc() - update_start;
       break;
     }
     for (int i = 0; i < chars; i++) {
@@ -345,7 +345,7 @@ int main(int argc, char **argv) {
       cur->first = ranks[cur->i];
       cur->second = ranks[cur->i + gap];
     }
-    update_time += rdtsc() - update_start;
+    // update_time += rdtsc() - update_start;
     gap *= 2;
     // printf("new gap %d\n", gap);
   }
