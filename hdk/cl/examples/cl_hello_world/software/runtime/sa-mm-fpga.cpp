@@ -123,10 +123,10 @@ rdtsc(void)
 using namespace std;
 
 typedef struct __attribute__((packed)) {
-  unsigned int: 4;
-  unsigned int i: 20;
   unsigned int second: 20;
   unsigned int first: 20;
+  unsigned int i: 20;
+  unsigned int: 4;
 } p;
 
 typedef struct {
