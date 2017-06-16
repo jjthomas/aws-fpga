@@ -136,6 +136,7 @@ int buf_size;
 int num_lists;
 
 #define TUP_MASK (0x000000FFFFFFFFFFL)
+#define I_MASK (0x0FFFFF0000000000L)
 
 #define LIST_BITS 9
 #define LIST_SIZE (1 << LIST_BITS)
@@ -268,7 +269,6 @@ int main(int argc, char **argv) {
   num_lists = buf_size / LIST_SIZE;
   data1 = (p *)malloc(sizeof(p) * buf_size);
   int *ranks = (int *)calloc(2 * chars, sizeof(int));
-  int *new_idxs = (int *)malloc(sizeof(int) * chars);
   merge_buf = (p *)malloc(sizeof(p) * buf_size);
   // only for CPU-only version
   sort_buf = (p *)malloc(sizeof(p) * LIST_SIZE);
@@ -284,6 +284,17 @@ int main(int argc, char **argv) {
     cur->first = 1048575;
     cur->second = 1048575;
     cur->i = 1048575;
+  }
+
+  int *prefix_sums = (int *)malloc(sizeof(int) * 256 * 8);
+  for (int i = 0; i < 256; i++) {
+    int cur_sum = 0;
+    int cur_val = i;
+    for (int j = 0; j < 8; j++) {
+      cur_sum += (cur_val & 0x01);
+      prefix_sums[i * 8 + j] = cum_sum;
+      cur_val >>= 1;
+    }
   }
 
   int gap = 1;
@@ -327,13 +338,28 @@ int main(int argc, char **argv) {
 
     uint64_t update_start = rdtsc();
     int cur_char = 1;
-    __m256i zero = _mm256_set1_epi32(0);
+    int vector_bound = (chars - 1) / 8 * 8 + 1;
+    __m512i tup_mask = _mm512_set1_epi64(TUP_MASK);
+    __m512i i_mask = _mm512_set1_epi64(I_MASK);
     ranks[LOOKUP_GLOB(0)->i] = cur_char;
-    for (int i = 1; i < chars; i++) {
-      uint64_t cur = *(uint64_t *)LOOKUP_GLOB(i);
+    for (int i = 1; i < vector_bound; i += 8) {
+      __m512i cur = _mm512_loadu_si512(LOOKUP_GLOB(i));
+      __m512i prev = _mm512_loadu_si512(LOOKUP_GLOB(i - 1));
+      __m512i cur_masked = _mm512_and_epi64(cur, tup_mask);
+      __m512i prev_masked = _mm512_and_epi64(prev, tup_mask);
+      __mmask8 cmp_res = _mm512_cmpeq_epi64_mask(cur_masked, prev_masked);
+      __m256i cur_char_broad = _mm256_set1_epi32(cur_char);
+      __m256i pref_sum = _mm256_loadu_si256(prefix_sums + (cmp_res << 3));
+      __m256i new_ranks = _mm256_add_epi32(cur_char_broad, pref_sum);
+      __m256i cur_is = _mm512_cvtepi64_epi32(_mm512_srli_epi64(_mm512_and_epi64(cur, i_mask), 40));
+      _mm256_i32scatter_epi32(ranks, cur_is, new_ranks, 1);
+      cur_char += prefix_sums[(cmp_res << 3) + 7];
+    }
+    for (int i = vector_bound; i < chars; i++) {
+      p *cur = LOOKUP_GLOB(i);
       uint64_t prev = *(uint64_t *)LOOKUP_GLOB(i - 1);
-      cur_char += ((cur & TUP_MASK) != (prev & TUP_MASK));
-      ranks[LOOKUP_GLOB(i)->i] = cur_char;
+      cur_char += ((*((uint64_t *)cur) & TUP_MASK) != (prev & TUP_MASK));
+      ranks[cur->i] = cur_char;
     }
     update_time += rdtsc() - update_start;
     if (cur_char == chars) {
