@@ -1,5 +1,5 @@
 // http://stackoverflow.com/questions/17761704/suffix-array-algorithm
-// clang++ -std=c++11 bw.cpp
+// g++ -O3 -std=c++11 -march=native sa-mm-fpga.cpp
 #include <sys/time.h>
 #include <fstream>
 #include <vector>
@@ -7,13 +7,13 @@
 #include <algorithm>
 #include <cassert>
 #include <immintrin.h>
+#include <string.h>
 
 // #define FPGA 1
 #ifdef FPGA
 #include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <poll.h>
@@ -292,7 +292,7 @@ int main(int argc, char **argv) {
     int cur_val = i;
     for (int j = 0; j < 8; j++) {
       cur_sum += (cur_val & 0x01);
-      prefix_sums[i * 8 + j] = cum_sum;
+      prefix_sums[i * 8 + j] = cur_sum;
       cur_val >>= 1;
     }
   }
@@ -347,13 +347,13 @@ int main(int argc, char **argv) {
       __m512i prev = _mm512_loadu_si512(LOOKUP_GLOB(i - 1));
       __m512i cur_masked = _mm512_and_epi64(cur, tup_mask);
       __m512i prev_masked = _mm512_and_epi64(prev, tup_mask);
-      __mmask8 cmp_res = _mm512_cmpeq_epi64_mask(cur_masked, prev_masked);
+      __mmask8 cmp_res = _mm512_cmpneq_epi64_mask(cur_masked, prev_masked);
       __m256i cur_char_broad = _mm256_set1_epi32(cur_char);
-      __m256i pref_sum = _mm256_loadu_si256(prefix_sums + (cmp_res << 3));
+      __m256i pref_sum = _mm256_loadu_si256((const __m256i *)(prefix_sums + (cmp_res * 8)));
       __m256i new_ranks = _mm256_add_epi32(cur_char_broad, pref_sum);
-      __m256i cur_is = _mm512_cvtepi64_epi32(_mm512_srli_epi64(_mm512_and_epi64(cur, i_mask), 40));
-      _mm256_i32scatter_epi32(ranks, cur_is, new_ranks, 1);
-      cur_char += prefix_sums[(cmp_res << 3) + 7];
+      __m512i cur_is = _mm512_srli_epi64(_mm512_and_epi64(cur, i_mask), 40);
+      _mm512_i64scatter_epi32(ranks, cur_is, new_ranks, 4);
+      cur_char += prefix_sums[(cmp_res * 8) + 7];
     }
     for (int i = vector_bound; i < chars; i++) {
       p *cur = LOOKUP_GLOB(i);
