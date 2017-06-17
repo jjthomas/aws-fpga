@@ -361,17 +361,29 @@ int main(int argc, char **argv) {
       cur_char += ((*((uint64_t *)cur) & TUP_MASK) != (prev & TUP_MASK));
       ranks[cur->i] = cur_char;
     }
-    update_time += rdtsc() - update_start;
     if (cur_char == chars) {
-      // update_time += rdtsc() - update_start;
+      update_time += rdtsc() - update_start;
       break;
     }
-    for (int i = 0; i < chars; i++) {
+    vector_bound = chars / 8 * 8;
+    __m512i gap_broad = _mm512_set1_epi64(gap);
+    for (int i = 0; i < vector_bound; i += 8) {
+      __m512i cur = _mm512_loadu_si512(LOOKUP_GLOB(i));
+      __m512i cur_is_orig = _mm512_and_epi64(cur, i_mask);
+      __m512i cur_is = _mm512_srli_epi64(cur_is_orig, 40);
+      __m512i cur_is_gap = _mm512_add_epi64(cur_is, gap_broad);
+      __m512i firsts = _mm512_cvtepu32_epi64(_mm512_i64gather_epi32(cur_is, ranks, 4));
+      __m512i seconds = _mm512_cvtepu32_epi64(_mm512_i64gather_epi32(cur_is_gap, ranks, 4));
+      __m512i tup = _mm512_or_epi64(seconds, _mm512_slli_epi64(firsts, 20));
+      __m512i result = _mm512_or_epi64(cur_is_orig, tup);
+      _mm512_storeu_si512(LOOKUP_GLOB(i), result);
+    }
+    for (int i = vector_bound; i < chars; i++) {
       p *cur = LOOKUP_GLOB(i);
       cur->first = ranks[cur->i];
       cur->second = ranks[cur->i + gap];
     }
-    // update_time += rdtsc() - update_start;
+    update_time += rdtsc() - update_start;
     gap *= 2;
     // printf("new gap %d\n", gap);
   }
