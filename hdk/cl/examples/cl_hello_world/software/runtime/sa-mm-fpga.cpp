@@ -1,5 +1,6 @@
 // http://stackoverflow.com/questions/17761704/suffix-array-algorithm
 // g++ -O3 -std=c++11 -march=native sa-mm-fpga.cpp
+// scl enable devtoolset-4 bash
 #include <sys/time.h>
 #include <fstream>
 #include <vector>
