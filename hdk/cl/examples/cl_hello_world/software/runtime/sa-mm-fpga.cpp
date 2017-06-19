@@ -153,8 +153,8 @@ int num_lists;
 
 #else
 
-#define LOOKUP(l, e) (data1 + (l << LIST_BITS) + e)
-#define LOOKUP_GLOB(e) (data1 + e)
+#define LOOKUP(l, e) (data1 + ((l) << LIST_BITS) + (e))
+#define LOOKUP_GLOB(e) (data1 + (e))
 #endif
 
 int compare(const void *a, const void *b) {
@@ -269,15 +269,15 @@ int main(int argc, char **argv) {
   buf_size = ((chars - 1) / 4096 + 1) * 4096;
   num_lists = buf_size / LIST_SIZE;
   data1 = (p *)malloc(sizeof(p) * buf_size);
+  p *data2 = (p *)malloc(sizeof(p) * chars);
   int *ranks = (int *)calloc(2 * chars, sizeof(int));
   merge_buf = (p *)malloc(sizeof(p) * buf_size);
   // only for CPU-only version
   sort_buf = (p *)malloc(sizeof(p) * LIST_SIZE);
   for (int i = 0; i < chars; i++) {
-    // TODO we can save an iteration and set gap back to 2 if we set both first and second here
     p *cur = LOOKUP_GLOB(i);
-    cur->first = 0;
-    cur->second = buf[i];
+    cur->first = buf[i] + 1;
+    cur->second = (i < chars - 1) ? buf[i + 1] + 1 : 0;
     cur->i = i;
   }
   for (int i = chars; i < buf_size; i++) {
@@ -298,7 +298,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  int gap = 1;
+  int gap = 2;
 
   struct timeval start, end, diff;
   gettimeofday(&start, 0);
@@ -306,36 +306,40 @@ int main(int argc, char **argv) {
   uint64_t sort_time = 0;
   uint64_t update_time = 0;
   uint64_t merge_time = 0;
+
+  uint64_t radix_start = rdtsc();
+  int *counts = (int *)calloc(257, sizeof(int));
+  for (int i = 0; i < chars; i++) {
+    counts[data1[i].second]++;
+  }
+  int sum = 0;
+  for (int i = 0; i < 257; i++) {
+    int new_sum = sum + counts[i];
+    counts[i] = sum;
+    sum = new_sum;
+  }
+  for (int i = 0; i < chars; i++) {
+    data2[counts[data1[i].second]++] = data1[i];
+  }
+  // radix pass 2
+  for (int i = 0; i < 257; i++) {
+    counts[i] = 0;
+  }
+  for (int i = 0; i < chars; i++) {
+    counts[data2[i].first]++;
+  }
+  sum = 0;
+  for (int i = 0; i < 257; i++) {
+    int new_sum = sum + counts[i];
+    counts[i] = sum;
+    sum = new_sum;
+  }
+  for (int i = 0; i < chars; i++) {
+    *LOOKUP_GLOB(counts[data2[i].first]++) = data2[i];
+  }
+  merge_time += rdtsc() - radix_start;
   while (true) {
-    uint64_t sort_start = rdtsc();
-    do_full_sort();
-    sort_time += rdtsc() - sort_start;
-    int el_to_check = LIST_SIZE;
-    uint64_t merge_start = rdtsc();
-    while (el_to_check < buf_size) {
-      p *prev = LOOKUP_GLOB(el_to_check - 1);
-      p *next = LOOKUP_GLOB(el_to_check);
-      if (prev->first == next->first) {
-	int lower_bound = el_to_check - 1;
-	int upper_bound = el_to_check;
-        while (lower_bound >= 0 && LOOKUP_GLOB(lower_bound)->first == prev->first) {
-          lower_bound--;
-	}
-	lower_bound++;
-        while (upper_bound < buf_size && LOOKUP_GLOB(upper_bound)->first == prev->first) {
-          upper_bound++;
-	}
-	// printf("%d %d %d %d\n", upper_bound, buf_size, LOOKUP_GLOB(upper_bound)->first, prev->first);
-	// printf("%d %d\n", lower_bound, upper_bound);
-        merge_lists(lower_bound, upper_bound);
-	// TODO remove
-	// assert(verify_sorted(lower_bound, upper_bound));
-	el_to_check = ((upper_bound >> LIST_BITS) + 1) << LIST_BITS;
-      } else {
-        el_to_check += LIST_SIZE;
-      }
-    }
-    merge_time += rdtsc() - merge_start;
+
 
     uint64_t update_start = rdtsc();
     int cur_char = 1;
@@ -387,6 +391,36 @@ int main(int argc, char **argv) {
     update_time += rdtsc() - update_start;
     gap *= 2;
     // printf("new gap %d\n", gap);
+
+    uint64_t sort_start = rdtsc();
+    do_full_sort();
+    sort_time += rdtsc() - sort_start;
+    int el_to_check = LIST_SIZE;
+    uint64_t merge_start = rdtsc();
+    while (el_to_check < buf_size) {
+      p *prev = LOOKUP_GLOB(el_to_check - 1);
+      p *next = LOOKUP_GLOB(el_to_check);
+      if (prev->first == next->first) {
+	int lower_bound = el_to_check - 1;
+	int upper_bound = el_to_check;
+        while (lower_bound >= 0 && LOOKUP_GLOB(lower_bound)->first == prev->first) {
+          lower_bound--;
+	}
+	lower_bound++;
+        while (upper_bound < buf_size && LOOKUP_GLOB(upper_bound)->first == prev->first) {
+          upper_bound++;
+	}
+	// printf("%d %d %d %d\n", upper_bound, buf_size, LOOKUP_GLOB(upper_bound)->first, prev->first);
+	// printf("%d %d\n", lower_bound, upper_bound);
+        merge_lists(lower_bound, upper_bound);
+	// TODO remove
+	// assert(verify_sorted(lower_bound, upper_bound));
+	el_to_check = ((upper_bound >> LIST_BITS) + 1) << LIST_BITS;
+      } else {
+        el_to_check += LIST_SIZE;
+      }
+    }
+    merge_time += rdtsc() - merge_start;
   }
   gettimeofday(&end, 0);
   timersub(&end, &start, &diff);
