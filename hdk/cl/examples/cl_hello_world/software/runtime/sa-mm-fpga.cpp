@@ -6,13 +6,13 @@
 #include <limits.h>
 #include <algorithm>
 #include <cassert>
+#include <string.h>
 
 // #define FPGA 0
 #ifdef FPGA
 #include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <poll.h>
