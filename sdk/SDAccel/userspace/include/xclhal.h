@@ -38,6 +38,7 @@
 
 
 #include "xclperf.h"
+#include "xcl_app_debug.h"
 
 #ifdef __cplusplus
 extern "C" {
