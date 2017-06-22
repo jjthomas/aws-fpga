@@ -11,7 +11,7 @@
 #include <string.h>
 
 // #define FPGA 1
-#define AXV512 1
+#define AVX512 1
 #ifdef FPGA
 #include <stdio.h>
 #include <fcntl.h>
