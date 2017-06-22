@@ -11,6 +11,7 @@
 #include <string.h>
 
 // #define FPGA 1
+#define AXV512 1
 #ifdef FPGA
 #include <stdio.h>
 #include <fcntl.h>
@@ -343,6 +344,7 @@ int main(int argc, char **argv) {
 
     uint64_t update_start = rdtsc();
     int cur_char = 1;
+#ifdef AVX512
     int vector_bound = (chars - 1) / 8 * 8 + 1;
     __m512i tup_mask = _mm512_set1_epi64(TUP_MASK);
     __m512i i_mask = _mm512_set1_epi64(I_MASK);
@@ -360,6 +362,9 @@ int main(int argc, char **argv) {
       _mm512_i64scatter_epi32(ranks, cur_is, new_ranks, 4);
       cur_char += prefix_sums[(cmp_res * 8) + 7];
     }
+#else
+    int vector_bound = 1;
+#endif
     for (int i = vector_bound; i < chars; i++) {
       p *cur = LOOKUP_GLOB(i);
       uint64_t prev = *(uint64_t *)LOOKUP_GLOB(i - 1);
@@ -370,6 +375,7 @@ int main(int argc, char **argv) {
       update_time += rdtsc() - update_start;
       break;
     }
+#ifdef AVX512
     vector_bound = chars / 8 * 8;
     __m512i gap_broad = _mm512_set1_epi64(gap);
     for (int i = 0; i < vector_bound; i += 8) {
@@ -383,6 +389,9 @@ int main(int argc, char **argv) {
       __m512i result = _mm512_or_epi64(cur_is_orig, tup);
       _mm512_storeu_si512(LOOKUP_GLOB(i), result);
     }
+#else
+    vector_bound = 0;
+#endif
     for (int i = vector_bound; i < chars; i++) {
       p *cur = LOOKUP_GLOB(i);
       cur->first = ranks[cur->i];
