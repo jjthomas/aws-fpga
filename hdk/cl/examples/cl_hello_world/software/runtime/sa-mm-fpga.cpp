@@ -11,7 +11,7 @@
 #include <string.h>
 
 // #define FPGA 1
-#define AVX512 1
+// #define AVX512 1
 #ifdef FPGA
 #include <stdio.h>
 #include <fcntl.h>
@@ -164,6 +164,12 @@ int num_lists;
 #define LOOKUP_GLOB(e) (data1 + (e))
 #endif
 
+#define STORE(src, dst, src_idx, dst_idx) {\
+	(dst).first[dst_idx] = (src).first[src_idx];\
+	(dst).second[dst_idx] = (src).second[src_idx];\
+        (dst).i[dst_idx] = (src).i[src_idx];\
+}
+
 int compare(const void *a, const void *b) {
   p *a_p = (p *)a;
   p *b_p = (p *)b;
@@ -174,6 +180,7 @@ int compare(const void *a, const void *b) {
   }
 };
 
+/*
 bool verify_sorted(int lower, int upper) {
   for (int i = lower + 1; i < upper; i++) {
     if (compare(LOOKUP_GLOB(i), LOOKUP_GLOB(i - 1)) < 0) {
@@ -182,6 +189,7 @@ bool verify_sorted(int lower, int upper) {
   }
   return true;
 }
+*/
 
 #ifdef FPGA
 void do_full_sort() {
@@ -195,11 +203,15 @@ void do_full_sort() {
 void do_full_sort() {
   for (int i = 0; i < num_lists; i++) {
     for (int j = 0; j < LIST_SIZE; j++) {
-      sort_buf[j] = *LOOKUP(i, j);
+      int idx = i * LIST_SIZE + j;
+      sort_buf[j] = (p) {data1.second[idx], data1.first[idx], data1.i[idx]};
     }
     qsort(sort_buf, LIST_SIZE, sizeof(p), compare);
     for (int j = 0; j < LIST_SIZE; j++) {
-      *LOOKUP(i, j) = sort_buf[j];
+      int idx = i * LIST_SIZE + j;
+      data1.second[idx] = sort_buf[j].second;
+      data1.first[idx] = sort_buf[j].first;
+      data1.i[idx] = sort_buf[j].i;
     }
   }
 }
@@ -224,26 +236,28 @@ void merge_lists(int lower, int upper) {
     }
     int merge_ptr = 0;
     while (first_ptr < first_bound && second_ptr < upper) {
-      p *first_el = LOOKUP_GLOB(first_ptr);
-      p *second_el = LOOKUP_GLOB(second_ptr);
-      if (first_el->second < second_el->second) {
-        merge_buf[merge_ptr++] = *first_el;
+      if (data1.second[first_ptr] < data1.second[second_ptr]) {
+	STORE(data1, merge_buf, first_ptr, merge_ptr);
+	merge_ptr++;
         first_ptr++;
       } else {
-        merge_buf[merge_ptr++] = *second_el;
+	STORE(data1, merge_buf, second_ptr, merge_ptr);
+	merge_ptr++;
         second_ptr++;
       }
     }
     while (first_ptr < first_bound) {
-      merge_buf[merge_ptr++] = *LOOKUP_GLOB(first_ptr);
+      STORE(data1, merge_buf, first_ptr, merge_ptr);
+      merge_ptr++;
       first_ptr++;
     }
     while (second_ptr < upper) {
-      merge_buf[merge_ptr++] = *LOOKUP_GLOB(second_ptr);
+      STORE(data1, merge_buf, second_ptr, merge_ptr);
+      merge_ptr++;
       second_ptr++;
     }
     for (int i = lower; i < upper; i++) {
-      *LOOKUP_GLOB(i) = merge_buf[i - lower];
+      STORE(merge_buf, data1, i - lower, i);
     }
   }
 }
@@ -279,9 +293,9 @@ int main(int argc, char **argv) {
   data1.second = (unsigned int *)malloc(sizeof(unsigned int) * buf_size);
   data1.i = (unsigned int *)malloc(sizeof(unsigned int) * buf_size);
   s data2;
-  data2.first = (unsigned int *)malloc(sizeof(unsigned int) * buf_size);
-  data2.second = (unsigned int *)malloc(sizeof(unsigned int) * buf_size);
-  data2.i = (unsigned int *)malloc(sizeof(unsigned int) * buf_size);
+  data2.first = (unsigned int *)malloc(sizeof(unsigned int) * chars);
+  data2.second = (unsigned int *)malloc(sizeof(unsigned int) * chars);
+  data2.i = (unsigned int *)malloc(sizeof(unsigned int) * chars);
   int *ranks = (int *)calloc(2 * chars, sizeof(int));
   merge_buf.first = (unsigned int *)malloc(sizeof(unsigned int) * buf_size);
   merge_buf.second = (unsigned int *)malloc(sizeof(unsigned int) * buf_size);
@@ -331,9 +345,7 @@ int main(int argc, char **argv) {
     sum = new_sum;
   }
   for (int i = 0; i < chars; i++) {
-    data2.first[counts[data1.second[i]]] = data1.first[i];
-    data2.second[counts[data1.second[i]]] = data1.second[i];
-    data2.i[counts[data1.second[i]]] = data1.i[i];
+    STORE(data1, data2, i, counts[data1.second[i]]);
     counts[data1.second[i]]++;
   }
   // radix pass 2
@@ -350,9 +362,7 @@ int main(int argc, char **argv) {
     sum = new_sum;
   }
   for (int i = 0; i < chars; i++) {
-    data1.first[counts[data2.first[i]]] = data2.first[i];
-    data1.second[counts[data2.first[i]]] = data2.second[i];
-    data1.i[counts[data2.first[i]]] = data2.i[i];
+    STORE(data2, data1, i, counts[data2.first[i]]);
     counts[data2.first[i]]++;
   }
   merge_time += rdtsc() - radix_start;
@@ -360,59 +370,53 @@ int main(int argc, char **argv) {
     uint64_t update_start = rdtsc();
     int cur_char = 1;
 #ifdef AVX512
-    int vector_bound = (chars - 1) / 8 * 8 + 1;
-    ranks[LOOKUP_GLOB(0)->i] = cur_char;
-    for (int i = 1; i < vector_bound; i += 8) {
-      __m512i cur = _mm512_loadu_si512(LOOKUP_GLOB(i));
-      __m512i prev = _mm512_loadu_si512(LOOKUP_GLOB(i - 1));
-      __m512i cur_masked = _mm512_and_epi64(cur, tup_mask);
-      __m512i prev_masked = _mm512_and_epi64(prev, tup_mask);
-      __mmask8 cmp_res = _mm512_cmpneq_epi64_mask(cur_masked, prev_masked);
-      __m256i cur_char_broad = _mm256_set1_epi32(cur_char);
-      __m256i pref_sum = _mm256_loadu_si256((const __m256i *)(prefix_sums + (cmp_res * 8)));
-      __m256i new_ranks = _mm256_add_epi32(cur_char_broad, pref_sum);
-      __m512i cur_is = _mm512_srli_epi64(_mm512_and_epi64(cur, i_mask), 40);
-      _mm512_i64scatter_epi32(ranks, cur_is, new_ranks, 4);
-      cur_char += prefix_sums[(cmp_res * 8) + 7];
+    int vector_bound = (chars - 1) / 16 * 16 + 1;
+    ranks[data1.i[0]] = cur_char;
+    for (int i = 1; i < vector_bound; i += 16) {
+      __m512i cur_firsts = _mm512_loadu_si512(data1.first + i);
+      __m512i prev_firsts = _mm512_loadu_si512(data1.first + (i - 1));
+      __m512i cur_seconds = _mm512_loadu_si512(data1.second + i);
+      __m512i prev_seconds = _mm512_loadu_si512(data1.second + (i - 1));
+      __mmask16 first_cmp_res = _mm512_cmpneq_epi32_mask(cur_firsts, prev_firsts);
+      __mmask16 second_cmp_res = _mm512_cmpneq_epi32_mask(cur_seconds, prev_seconds);
+      __m512i cur_char_broad = _mm512_set1_epi32(cur_char);
+      __m512i pref_sum = _mm512_loadu_si512(prefix_sums + ((first_cmp_res | second_cmp_res) * 16));
+      __m512i new_ranks = _mm512_add_epi32(cur_char_broad, pref_sum);
+      __m512i cur_is = _mm512_loadu_si512(data1.i + i);
+      _mm512_i32scatter_epi32(ranks, cur_is, new_ranks, 4);
+      cur_char += prefix_sums[((first_cmp_res | second_cmp_res) * 16) + 15];
     }
 #else
     int vector_bound = 1;
 #endif
     for (int i = vector_bound; i < chars; i++) {
-      p *cur = LOOKUP_GLOB(i);
-      uint64_t prev = *(uint64_t *)LOOKUP_GLOB(i - 1);
-      cur_char += ((*((uint64_t *)cur) & TUP_MASK) != (prev & TUP_MASK));
-      ranks[cur->i] = cur_char;
+      cur_char += (data1.first[i] != data1.first[i - 1]) | (data1.second[i] != data1.second[i - 1]);
+      ranks[data1.i[i]] = cur_char;
     }
     if (cur_char == chars) {
       update_time += rdtsc() - update_start;
       break;
     }
 #ifdef AVX512
-    vector_bound = chars / 8 * 8;
-    __m512i gap_broad = _mm512_set1_epi64(gap);
-    for (int i = 0; i < vector_bound; i += 8) {
-      __m512i cur = _mm512_loadu_si512(LOOKUP_GLOB(i));
-      __m512i cur_is_orig = _mm512_and_epi64(cur, i_mask);
-      __m512i cur_is = _mm512_srli_epi64(cur_is_orig, 40);
-      __m512i cur_is_gap = _mm512_add_epi64(cur_is, gap_broad);
-      __m512i firsts = _mm512_cvtepu32_epi64(_mm512_i64gather_epi32(cur_is, ranks, 4));
-      __m512i seconds = _mm512_cvtepu32_epi64(_mm512_i64gather_epi32(cur_is_gap, ranks, 4));
-      __m512i tup = _mm512_or_epi64(seconds, _mm512_slli_epi64(firsts, 20));
-      __m512i result = _mm512_or_epi64(cur_is_orig, tup);
-      _mm512_storeu_si512(LOOKUP_GLOB(i), result);
+    vector_bound = chars / 16 * 16;
+    __m512i gap_broad = _mm512_set1_epi32(gap);
+    for (int i = 0; i < vector_bound; i += 16) {
+      __m512i cur_is = _mm512_loadu_si512(data1.i + i);
+      __m512i cur_is_gap = _mm512_add_epi32(cur_is, gap_broad);
+      __m512i firsts = _mm512_i32gather_epi32(cur_is, ranks, 4);
+      __m512i seconds = _mm512_i32gather_epi32(cur_is_gap, ranks, 4);
+      _mm512_storeu_si512(data1.first + i, firsts);
+      _mm512_storeu_si512(data1.second + i, seconds);
     }
 #else
     vector_bound = 0;
 #endif
     for (int i = vector_bound; i < chars; i++) {
-      p *cur = LOOKUP_GLOB(i);
-      cur->first = ranks[cur->i];
-      cur->second = ranks[cur->i + gap];
+      data1.first[i] = ranks[data1.i[i]];
+      data1.second[i] = ranks[data1.i[i] + gap];
     }
     update_time += rdtsc() - update_start;
     gap *= 2;
-    // printf("new gap %d\n", gap);
 
     uint64_t sort_start = rdtsc();
     do_full_sort();
@@ -420,23 +424,17 @@ int main(int argc, char **argv) {
     int el_to_check = LIST_SIZE;
     uint64_t merge_start = rdtsc();
     while (el_to_check < buf_size) {
-      p *prev = LOOKUP_GLOB(el_to_check - 1);
-      p *next = LOOKUP_GLOB(el_to_check);
-      if (prev->first == next->first) {
+      if (data1.first[el_to_check - 1] == data1.first[el_to_check]) {
 	int lower_bound = el_to_check - 1;
 	int upper_bound = el_to_check;
-        while (lower_bound >= 0 && LOOKUP_GLOB(lower_bound)->first == prev->first) {
+        while (lower_bound >= 0 && data1.first[lower_bound] == data1.first[el_to_check - 1]) {
           lower_bound--;
 	}
 	lower_bound++;
-        while (upper_bound < buf_size && LOOKUP_GLOB(upper_bound)->first == prev->first) {
+        while (upper_bound < buf_size && data1.first[upper_bound] == data1.first[el_to_check - 1]) {
           upper_bound++;
 	}
-	// printf("%d %d %d %d\n", upper_bound, buf_size, LOOKUP_GLOB(upper_bound)->first, prev->first);
-	// printf("%d %d\n", lower_bound, upper_bound);
         merge_lists(lower_bound, upper_bound);
-	// TODO remove
-	// assert(verify_sorted(lower_bound, upper_bound));
 	el_to_check = ((upper_bound >> LIST_BITS) + 1) << LIST_BITS;
       } else {
         el_to_check += LIST_SIZE;
