@@ -131,8 +131,14 @@ typedef struct __attribute__((packed)) {
   unsigned int: 4;
 } p;
 
-p *data1;
-p *merge_buf;
+typedef struct {
+  unsigned int *second;
+  unsigned int *first;
+  unsigned int *i;
+} s;
+
+s data1;
+s merge_buf;
 p *sort_buf;
 int buf_size;
 int num_lists;
@@ -269,32 +275,37 @@ int main(int argc, char **argv) {
 
   buf_size = ((chars - 1) / 4096 + 1) * 4096;
   num_lists = buf_size / LIST_SIZE;
-  data1 = (p *)malloc(sizeof(p) * buf_size);
-  p *data2 = (p *)malloc(sizeof(p) * chars);
+  data1.first = (unsigned int *)malloc(sizeof(unsigned int) * buf_size);
+  data1.second = (unsigned int *)malloc(sizeof(unsigned int) * buf_size);
+  data1.i = (unsigned int *)malloc(sizeof(unsigned int) * buf_size);
+  s data2;
+  data2.first = (unsigned int *)malloc(sizeof(unsigned int) * buf_size);
+  data2.second = (unsigned int *)malloc(sizeof(unsigned int) * buf_size);
+  data2.i = (unsigned int *)malloc(sizeof(unsigned int) * buf_size);
   int *ranks = (int *)calloc(2 * chars, sizeof(int));
-  merge_buf = (p *)malloc(sizeof(p) * buf_size);
+  merge_buf.first = (unsigned int *)malloc(sizeof(unsigned int) * buf_size);
+  merge_buf.second = (unsigned int *)malloc(sizeof(unsigned int) * buf_size);
+  merge_buf.i = (unsigned int *)malloc(sizeof(unsigned int) * buf_size);
   // only for CPU-only version
   sort_buf = (p *)malloc(sizeof(p) * LIST_SIZE);
   for (int i = 0; i < chars; i++) {
-    p *cur = LOOKUP_GLOB(i);
-    cur->first = buf[i] + 1;
-    cur->second = (i < chars - 1) ? buf[i + 1] + 1 : 0;
-    cur->i = i;
+    data1.first[i] = buf[i] + 1;
+    data1.second[i] = (i < chars - 1) ? buf[i + 1] + 1 : 0;
+    data1.i[i] = i;
   }
   for (int i = chars; i < buf_size; i++) {
-    p *cur = LOOKUP_GLOB(i);
-    cur->first = 1048575;
-    cur->second = 1048575;
-    cur->i = 1048575;
+    data1.first[i] = 1048575;
+    data1.second[i] = 1048575;
+    data1.i[i] = 1048575;
   }
 
-  int *prefix_sums = (int *)malloc(sizeof(int) * 256 * 8);
-  for (int i = 0; i < 256; i++) {
+  int *prefix_sums = (int *)malloc(sizeof(int) * 65536 * 16);
+  for (int i = 0; i < 65536; i++) {
     int cur_sum = 0;
     int cur_val = i;
-    for (int j = 0; j < 8; j++) {
+    for (int j = 0; j < 16; j++) {
       cur_sum += (cur_val & 0x01);
-      prefix_sums[i * 8 + j] = cur_sum;
+      prefix_sums[i * 16 + j] = cur_sum;
       cur_val >>= 1;
     }
   }
@@ -311,7 +322,7 @@ int main(int argc, char **argv) {
   uint64_t radix_start = rdtsc();
   int *counts = (int *)calloc(257, sizeof(int));
   for (int i = 0; i < chars; i++) {
-    counts[data1[i].second]++;
+    counts[data1.second[i]]++;
   }
   int sum = 0;
   for (int i = 0; i < 257; i++) {
@@ -320,14 +331,17 @@ int main(int argc, char **argv) {
     sum = new_sum;
   }
   for (int i = 0; i < chars; i++) {
-    data2[counts[data1[i].second]++] = data1[i];
+    data2.first[counts[data1.second[i]]] = data1.first[i];
+    data2.second[counts[data1.second[i]]] = data1.second[i];
+    data2.i[counts[data1.second[i]]] = data1.i[i];
+    counts[data1.second[i]]++;
   }
   // radix pass 2
   for (int i = 0; i < 257; i++) {
     counts[i] = 0;
   }
   for (int i = 0; i < chars; i++) {
-    counts[data2[i].first]++;
+    counts[data2.first[i]]++;
   }
   sum = 0;
   for (int i = 0; i < 257; i++) {
@@ -336,18 +350,17 @@ int main(int argc, char **argv) {
     sum = new_sum;
   }
   for (int i = 0; i < chars; i++) {
-    *LOOKUP_GLOB(counts[data2[i].first]++) = data2[i];
+    data1.first[counts[data2.first[i]]] = data2.first[i];
+    data1.second[counts[data2.first[i]]] = data2.second[i];
+    data1.i[counts[data2.first[i]]] = data2.i[i];
+    counts[data2.first[i]]++;
   }
   merge_time += rdtsc() - radix_start;
   while (true) {
-
-
     uint64_t update_start = rdtsc();
     int cur_char = 1;
 #ifdef AVX512
     int vector_bound = (chars - 1) / 8 * 8 + 1;
-    __m512i tup_mask = _mm512_set1_epi64(TUP_MASK);
-    __m512i i_mask = _mm512_set1_epi64(I_MASK);
     ranks[LOOKUP_GLOB(0)->i] = cur_char;
     for (int i = 1; i < vector_bound; i += 8) {
       __m512i cur = _mm512_loadu_si512(LOOKUP_GLOB(i));
