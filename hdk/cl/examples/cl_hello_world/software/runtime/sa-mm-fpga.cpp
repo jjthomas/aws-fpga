@@ -123,10 +123,10 @@ rdtsc(void)
 using namespace std;
 
 typedef struct __attribute__((packed)) {
+  unsigned int: 4;
+  unsigned int i: 20;
   unsigned int second: 20;
   unsigned int first: 20;
-  unsigned int i: 20;
-  unsigned int: 4;
 } p;
 
 typedef struct {
@@ -177,6 +177,21 @@ bool verify_sorted(int lower, int upper) {
   return true;
 }
 
+void quicksort(uint64_t *arr, int lo, int hi) {
+  if (hi <= lo) return;
+  int lt = lo, gt = hi;
+  uint64_t v = arr[lo];
+  int i = lo + 1;
+  while (i <= gt) {
+    uint64_t t = arr[i];
+    if      (t < v) swap(arr[lt++], arr[i++]);
+    else if (t > v) swap(arr[i], arr[gt--]);
+    else            i++;
+  }
+  quicksort(arr, lo, lt-1);
+  quicksort(arr, gt+1, hi);
+}
+
 #ifdef FPGA
 void do_full_sort() {
   for (int i = 0; i < buf_size; i += 4096) { 
@@ -191,7 +206,7 @@ void do_full_sort() {
     for (int j = 0; j < LIST_SIZE; j++) {
       sort_buf[j] = *LOOKUP(i, j);
     }
-    qsort(sort_buf, LIST_SIZE, sizeof(p), compare);
+    quicksort((uint64_t *)sort_buf, 0, LIST_SIZE - 1);
     for (int j = 0; j < LIST_SIZE; j++) {
       *LOOKUP(i, j) = sort_buf[j];
     }
