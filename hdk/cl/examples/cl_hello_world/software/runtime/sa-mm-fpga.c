@@ -1,19 +1,17 @@
 // http://stackoverflow.com/questions/17761704/suffix-array-algorithm
 // clang++ -std=c++11 bw.cpp
+#define _GNU_SOURCE
 #include <sys/time.h>
-#include <fstream>
-#include <vector>
 #include <limits.h>
-#include <algorithm>
-#include <cassert>
 #include <string.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 // #define FPGA 0
 #ifdef FPGA
-#include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include <poll.h>
 
@@ -26,7 +24,7 @@ static uint16_t pci_device_id = 0xF000;
 
 const struct logger *logger = &logger_stdout;
 
-static int 
+static int
 check_slot_config()
 {
     int rc;
@@ -108,8 +106,6 @@ rdtsc(void)
   return tv.tv_sec * 1000000 + tv.tv_usec;
 }
 
-using namespace std;
-
 typedef struct __attribute__((packed)) {
   unsigned int second: 20;
   unsigned int first: 20;
@@ -156,18 +152,9 @@ int compare(const void *a, const void *b) {
   }
 };
 
-bool verify_sorted(int lower, int upper) {
-  for (int i = lower + 1; i < upper; i++) {
-    if (compare(LOOKUP_GLOB(i), LOOKUP_GLOB(i - 1)) < 0) {
-      return false;
-    }
-  }
-  return true;
-}
-
 #ifdef FPGA
 void do_full_sort() {
-  for (int i = 0; i < buf_size; i += 4096) { 
+  for (int i = 0; i < buf_size; i += 4096) {
     pwrite(fd, data1 + i, 4096 * sizeof(p), 0);
     fsync(fd);
     pread(fd, data1 + i, 4096 * sizeof(p), 0);
@@ -236,18 +223,22 @@ int main(int argc, char **argv) {
   fail_on(rc, out, "fpga_setup failed");
 #endif
   int CHARS = atoi(argv[1]);
-  
-  ifstream infile(argv[2]);
-  string line;
+
+  FILE *fp;
+  char *line = NULL;
+  size_t len = 0;
+  ssize_t read;
+
+  fp = fopen(argv[2], "r");
 
   int chars = 0;
-  char *buf = new char[CHARS];
-  while (getline(infile, line)) {
-    if (chars + line.length() > CHARS) {
+  char *buf = (char *)malloc(sizeof(char) * CHARS);
+  while ((read = getline(&line, &len, fp)) != -1) {
+    if (chars + read > CHARS) {
       break;
     }
-    memcpy(buf + chars, line.c_str(), line.length());
-    chars += line.length();
+    memcpy(buf + chars, line, read);
+    chars += read;
   }
 
   buf_size = ((chars - 1) / 4096 + 1) * 4096;
@@ -317,7 +308,7 @@ int main(int argc, char **argv) {
     *LOOKUP_GLOB(counts[data2[i].first]++) = data2[i];
   }
   merge_time += rdtsc() - radix_start;
-  while (true) {
+  while (1) {
     uint64_t update_start = rdtsc();
     bound *next_bounds = (cur_bounds == bounds1) ? bounds2 : bounds1;
     int next_num_bounds = 0;
