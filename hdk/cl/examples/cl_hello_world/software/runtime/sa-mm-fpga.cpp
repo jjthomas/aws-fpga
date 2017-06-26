@@ -103,21 +103,9 @@ int fd = -1;
 static inline uint64_t
 rdtsc(void)
 {
-	uint32_t eax = 0, edx;
-
-	__asm__ __volatile__("cpuid;"
-			     "rdtsc;"
-				: "+a" (eax), "=d" (edx)
-				:
-				: "%rcx", "%rbx", "memory");
-
-	__asm__ __volatile__("xorl %%eax, %%eax;"
-			     "cpuid;"
-				:
-				:
-				: "%rax", "%rbx", "%rcx", "%rdx", "memory");
-
-	return (((uint64_t)edx << 32) | eax) / 1000;
+  struct timeval tv;
+  gettimeofday(&tv, 0);
+  return tv.tv_sec * 1000000 + tv.tv_usec;
 }
 
 using namespace std;
