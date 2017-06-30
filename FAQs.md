@@ -112,7 +112,7 @@ The developer can create multiple AFIs at no extra cost, up to a defined limited
 
 The AFI process starts by creating Custom Logic (CL) code that conforms to the [Shell Specification]((./hdk/docs/AWS_Shell_Interface_Specification.md). Then, the CL must be compiled using the HDK scripts which leverages Vivado tools to create a Design Checkpoint (DCP). That DCP is submitted to AWS for generating an AFI using the `aws ec2 create-fpga-image` API.
 
-
+Use the AWS CLI `describe-fpga-images` API to get information about the created AFIs using the AFI ID provided by `create-fpga-image`, or to list available AFIs for your account. See [describe-fpga-images](./hdk/docs/describe_fpga_images.md) document for details on how to use this API.
 
 **Q: Can I bring my own bitstream for loading on an F1 FPGA?**
 
@@ -128,7 +128,7 @@ Yes, on-premises tools can be used to develop the Design Checkpoint needed for c
 If a developer uses local tools and license, please check the [supported versions of Vivado](./hdk/supported_vivado_versions.txt) for the exact Xilinx Vivado tool version supported by the HDK.  Developers have access to Xilinx Vivado running in the AWS by using the [FPGA Developer AMI on AWS Marketplace](https://aws.amazon.com/marketplace/pp/B06VVYBLZZ)
   
 
-**Q: Is there a “best practice” system template? **
+**Q: Is there a “best practice” system template?**
 
 AWS prefers not to limit developers to a specific template in terms of how we advise to use AWS FPGAs. A good overview of these interfaces can be found [here](https://github.com/aws/aws-fpga/blob/master/hdk/docs/Programmer_View.md)
   
@@ -204,7 +204,7 @@ We encourage you to use the [AWS FPGA Developer Forum](https://forums.aws.amazon
 
 The required AWS software is the [FPGA Management Tool set](./sdk/userspace/fpga_mgmt_tools). This software manages loading and clearing AFIs for the instance FPGAs. It also allows developers to retrieve FPGAs status from within the instance. Users will need to load the F1 AMI with the drivers and runtime libraries needed for their FPGA application.
 
-Typically, you will not need the HDK nor any Xilinx Vivado tools on an F1 instance that is using prebuilt AFIs; unless, you want to do in-field debug using Vivado's ChipScope.
+Typically, you will not need the HDK nor any Xilinx Vivado tools on an F1 instance that is using prebuilt AFIs; unless, you want to do in-field debug using Vivado's ChipScope (Virtual JTAG).
 
 
 ## Marketplace
@@ -235,7 +235,7 @@ There are two types of interfaces from the instance host CPU to the FPGAs:
 
 The first is the FPGA Image Management Tools. These APIs are detailed in the [SDK portion](./sdk/userspace/fpga_mgmt_tools) of the GitHub repository. FPGA Image Management Tools include APIs to load, clear, and get status of the FPGA. 
 
-The second type of interface is direct address access to the Application PCIe Physical Functions (PF) of the FPGA. There is no API for this access. Rather, there is direct access to resources in the Custom Logic (CL) region or Shell that can be accessed by software written on the instance. For example, the ChipScope software uses address space in a PF to provide FPGA debug support. Developers can create any API to the resources in their CL. See the [Shell Interface Specification](./hdk/docs/AWS_Shell_Interface_Specification.md) for more details on the address space mapping as seen from the instance.
+The second type of interface is direct address access to the Application PCIe Physical Functions (PF) of the FPGA. There is no API for this access. Rather, there is direct access to resources in the Custom Logic (CL) region or Shell that can be accessed by software written on the instance. For example, the ChipScope software (Virtual JTAG) uses address space in a PF to provide FPGA debug support. Developers can create any API to the resources in their CL. See the [Shell Interface Specification](./hdk/docs/AWS_Shell_Interface_Specification.md) for more details on the address space mapping as seen from the instance.
 
 
 
@@ -379,12 +379,12 @@ Yes. The HDK includes a simulation model for the AWS shell. See the [HDK common 
 
 **Q: What resources within the FPGA does the AWS Shell consume?**
 
-The Shell consumes about 20% of the FPGA resources, and that includes the PCIe Gen3 X16, DMA engine, DRAM controller interface, ChipScope and other health monitoring and image loading logic. No modifications to the Shell or the partition pins between the Shell and the Custom Logic are possible by the FPGA developer.
+The Shell consumes about 20% of the FPGA resources, and that includes the PCIe Gen3 X16, DMA engine, DRAM controller interface, ChipScope (Virtual JTAG) and other health monitoring and image loading logic. No modifications to the Shell or the partition pins between the Shell and the Custom Logic are possible by the FPGA developer.
 
 
 
 ## Troubleshooting
-**Q: Why do I see error “vivado not found” while running hdk_setup.sh*?**
+**Q: Why do I see error “vivado not found” while running hdk_setup.sh?**
 
 This is an indication that Xilinx Vivado tool set are not installed. Try installing the tool if you are working on your own environment, or alternative use AWS FPGA Development AMI available on AWS Marketplace, which comes with pre-installed Vivado toolset and license.
 

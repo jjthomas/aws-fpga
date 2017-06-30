@@ -38,6 +38,7 @@
 
 
 #include "xclperf.h"
+#include "xcl_app_debug.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,6 +47,7 @@ extern "C" {
     typedef void * xclDeviceHandle;
 
     struct xclBin;
+    struct axlf;
     /**
      * Structure used to obtain various bits of information from the device.
      */

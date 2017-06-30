@@ -225,8 +225,8 @@ namespace xcldev {
 
             char temp[8];
             stream.read(temp, 8);
-            if (std::strncmp(temp, "xclbin0", 8))
-                return -EINVAL;
+            if (std::strncmp(temp, "xclbin0", 8) && std::strncmp(temp, "xclbin2", 8))
+                  return -EINVAL;
 
             stream.seekg(0, stream.end);
             int length = stream.tellg();

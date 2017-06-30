@@ -18,6 +18,13 @@
 #include <stdint.h>
 
 #include <hal/fpga_common.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * FPGA_PCI_BARS_MAX:
@@ -203,3 +210,7 @@ int fpga_pci_rescan_slot_app_pfs(int slot_id);
  */
 int fpga_pci_get_address(pci_bar_handle_t handle, uint64_t offset,
 	uint64_t dword_len, void **ptr);
+
+#ifdef __cplusplus
+}
+#endif

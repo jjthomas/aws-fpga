@@ -30,8 +30,6 @@ module cl_dram_dma #(parameter NUM_DDR=4)
 // developers to remve the specific interfaces
 // that the CL will use
 
-`include "unused_hmc_template.inc"
-`include "unused_aurora_template.inc"
 `include "unused_sh_bar1_template.inc"
 
 // Defining local parameters that will instantiate the
@@ -46,7 +44,7 @@ module cl_dram_dma #(parameter NUM_DDR=4)
 // place where ATG (Automatic Test Generator)
 // is defined
    
-   localparam NUM_CFG_STGS_CL_DDR_ATG = 4;
+   localparam NUM_CFG_STGS_CL_DDR_ATG = 8;
    localparam NUM_CFG_STGS_SH_DDR_ATG = 4;
    localparam NUM_CFG_STGS_PCIE_ATG = 4;
 
@@ -96,9 +94,9 @@ scrb_bus_t ddrd_scrb_bus();
 
 
 logic clk;
-logic pipe_rst_n;
+(* dont_touch = "true" *) logic pipe_rst_n;
 logic pre_sync_rst_n;
-logic sync_rst_n;
+(* dont_touch = "true" *) logic sync_rst_n;
 logic sh_cl_flr_assert_q;
 
 logic [3:0] all_ddr_scrb_done;
@@ -247,8 +245,6 @@ assign cl_sh_dma_pcis_rresp = sh_cl_dma_pcis_bus.rresp;
 assign cl_sh_dma_pcis_rdata = sh_cl_dma_pcis_bus.rdata;
 assign sh_cl_dma_pcis_bus.rready = sh_cl_dma_pcis_rready;
 
-logic sorting_network_ready;
-
 assign cl_sh_ddr_awid = cl_sh_ddr_bus.awid;
 assign cl_sh_ddr_awaddr = cl_sh_ddr_bus.awaddr;
 assign cl_sh_ddr_awlen = cl_sh_ddr_bus.awlen;
@@ -260,7 +256,7 @@ assign cl_sh_ddr_wdata = cl_sh_ddr_bus.wdata;
 assign cl_sh_ddr_wstrb = cl_sh_ddr_bus.wstrb;
 assign cl_sh_ddr_wlast = cl_sh_ddr_bus.wlast;
 assign cl_sh_ddr_wvalid = cl_sh_ddr_bus.wvalid;
-assign cl_sh_ddr_bus.wready = sh_cl_ddr_wready && sorting_network_ready;
+assign cl_sh_ddr_bus.wready = sh_cl_ddr_wready;
 assign cl_sh_ddr_bus.bid = sh_cl_ddr_bid;
 assign cl_sh_ddr_bus.bresp = sh_cl_ddr_bresp;
 assign cl_sh_ddr_bus.bvalid = sh_cl_ddr_bvalid;
@@ -273,26 +269,12 @@ assign cl_sh_ddr_arvalid = cl_sh_ddr_bus.arvalid;
 assign cl_sh_ddr_bus.arready = sh_cl_ddr_arready;
 assign cl_sh_ddr_bus.rid = sh_cl_ddr_rid;
 assign cl_sh_ddr_bus.rresp = sh_cl_ddr_rresp;
-// assign cl_sh_ddr_bus.rvalid = sh_cl_ddr_rvalid;
-assign cl_sh_ddr_bus.rdata[511:64] = sh_cl_ddr_rdata[511:64];
+assign cl_sh_ddr_bus.rvalid = sh_cl_ddr_rvalid;
+assign cl_sh_ddr_bus.rdata = sh_cl_ddr_rdata;
 assign cl_sh_ddr_bus.rlast = sh_cl_ddr_rlast;
 assign cl_sh_ddr_rready = cl_sh_ddr_bus.rready;
 
-logic sorting_network_sync_rst_n;
-lib_pipe #(.WIDTH(1), .STAGES(4)) DMA_PCIS_SLV_SLC_RST_N (.clk(clk), .rst_n(1'b1), .in_bus(sync_rst_n), .out_bus(sorting_network_sync_rst_n));
-SortingNetwork network(
-  .clock(clk),
-  .reset(sorting_network_sync_rst_n),
-  .io_blockValid(cl_sh_ddr_wvalid),
-  .io_block(cl_sh_ddr_wdata[63:0]),
-  .io_downstreamReady(cl_sh_ddr_bus.rready),
-  .io_thisReady(sorting_network_ready),
-  .io_outValid(cl_sh_ddr_bus.rvalid),
-  .io_out(cl_sh_ddr_bus.rdata[63:0])
-);
-
-
-logic dma_pcis_slv_sync_rst_n;
+(* dont_touch = "true" *) logic dma_pcis_slv_sync_rst_n;
 lib_pipe #(.WIDTH(1), .STAGES(4)) DMA_PCIS_SLV_SLC_RST_N (.clk(clk), .rst_n(1'b1), .in_bus(sync_rst_n), .out_bus(dma_pcis_slv_sync_rst_n));
 cl_dma_pcis_slv #(.SCRB_BURST_LEN_MINUS1(DDR_SCRB_BURST_LEN_MINUS1),
                     .SCRB_MAX_ADDR(DDR_SCRB_MAX_ADDR),
@@ -361,7 +343,7 @@ assign cl_sh_pcim_rready = cl_sh_pcim_bus.rready;
 // and the axi4 size is set fixed for 64-bytes
 //  cl_sh_pcim_arsize/awsize = 3'b6;
 
-logic pcim_mstr_sync_rst_n;
+(* dont_touch = "true" *) logic pcim_mstr_sync_rst_n;
 lib_pipe #(.WIDTH(1), .STAGES(4)) PCIM_MSTR_SLC_RST_N (.clk(clk), .rst_n(1'b1), .in_bus(sync_rst_n), .out_bus(pcim_mstr_sync_rst_n));
 cl_pcim_mstr CL_PCIM_MSTR (
 
@@ -395,7 +377,7 @@ assign ocl_sh_rresp = sh_ocl_bus.rresp;
 assign ocl_sh_rdata = sh_ocl_bus.rdata[31:0];
 assign sh_ocl_bus.rready = sh_ocl_rready;
 
-logic ocl_slv_sync_rst_n;
+(* dont_touch = "true" *) logic ocl_slv_sync_rst_n;
 lib_pipe #(.WIDTH(1), .STAGES(4)) OCL_SLV_SLC_RST_N (.clk(clk), .rst_n(1'b1), .in_bus(sync_rst_n), .out_bus(ocl_slv_sync_rst_n));
 cl_ocl_slv CL_OCL_SLV (
 
@@ -532,7 +514,7 @@ assign {lcl_cl_sh_ddrd.rlast, lcl_cl_sh_ddrb.rlast, lcl_cl_sh_ddra.rlast} = sh_c
 assign {lcl_cl_sh_ddrd.rvalid, lcl_cl_sh_ddrb.rvalid, lcl_cl_sh_ddra.rvalid} = sh_cl_ddr_rvalid_2d;
 assign cl_sh_ddr_rready_2d = {lcl_cl_sh_ddrd.rready, lcl_cl_sh_ddrb.rready, lcl_cl_sh_ddra.rready};
 
-logic sh_ddr_sync_rst_n;
+(* dont_touch = "true" *) logic sh_ddr_sync_rst_n;
 lib_pipe #(.WIDTH(1), .STAGES(4)) SH_DDR_SLC_RST_N (.clk(clk), .rst_n(1'b1), .in_bus(sync_rst_n), .out_bus(sh_ddr_sync_rst_n));
 sh_ddr #(
          .DDR_A_PRESENT(DDR_A_PRESENT),
@@ -675,7 +657,7 @@ sh_ddr #(
 // Interrrupt example  
 //-----------------------------------------
 
-logic int_slv_sync_rst_n;
+(* dont_touch = "true" *) logic int_slv_sync_rst_n;
 lib_pipe #(.WIDTH(1), .STAGES(4)) INT_SLV_SLC_RST_N (.clk(clk), .rst_n(1'b1), .in_bus(sync_rst_n), .out_bus(int_slv_sync_rst_n));
 cl_int_slv CL_INT_TST 
 (
@@ -716,7 +698,7 @@ assign cl_sda_rresp = sda_cl_bus.rresp;
 assign cl_sda_rdata = sda_cl_bus.rdata[31:0];
 assign sda_cl_bus.rready = sda_cl_rready;
 
-logic sda_slv_sync_rst_n;
+(* dont_touch = "true" *) logic sda_slv_sync_rst_n;
 lib_pipe #(.WIDTH(1), .STAGES(4)) SDA_SLV_SLC_RST_N (.clk(clk), .rst_n(1'b1), .in_bus(sync_rst_n), .out_bus(sda_slv_sync_rst_n));
 cl_sda_slv CL_SDA_SLV (
 
@@ -736,7 +718,7 @@ cl_sda_slv CL_SDA_SLV (
 //-----------------------------------------
 
 
-`ifndef DISABLE_CHIPSCOPE_DEBUG
+`ifndef DISABLE_VJTAG_DEBUG
 
 cl_ila CL_ILA (
 
@@ -753,7 +735,7 @@ cl_ila CL_ILA (
    .runtest(runtest),
    .reset(reset),
    .capture(capture),
-   .bscanid(bscanid),
+   .bscanid_en(bscanid_en),
  
    .sh_cl_dma_pcis_q(sh_cl_dma_pcis_q),
    .lcl_cl_sh_ddra(lcl_cl_sh_ddra)
@@ -767,7 +749,7 @@ cl_vio CL_VIO (
 );
 
 
-`endif //  `ifndef DISABLE_CHIPSCOPE_DEBUG
+`endif //  `ifndef DISABLE_VJTAG_DEBUG
 
 //----------------------------------------- 
 // Virtual JATG ILA Debug core example 
