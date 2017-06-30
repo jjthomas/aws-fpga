@@ -255,7 +255,6 @@ int main(int argc, char **argv) {
   // only for CPU-only version
   sort_buf = (p *)malloc(sizeof(p) * LIST_SIZE);
   for (int i = 0; i < chars; i++) {
-    // TODO we can save an iteration and set gap back to 2 if we set both first and second here
     p *cur = LOOKUP_GLOB(i);
     cur->first = buf[i] + 1;
     cur->second = (i < chars - 1) ? buf[i + 1] + 1 : 0;
