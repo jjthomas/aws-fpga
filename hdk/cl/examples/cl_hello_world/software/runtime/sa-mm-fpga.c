@@ -125,7 +125,7 @@ typedef struct {
 
 p *data1;
 p2 *intr;
-p *merge_buf;
+p2 *merge_buf;
 p *sort_buf;
 int buf_size;
 int num_lists;
@@ -199,8 +199,8 @@ void merge_lists(int lower, int upper) {
     }
     int merge_ptr = 0;
     while (first_ptr < first_bound && second_ptr < upper) {
-      p *first_el = LOOKUP_GLOB(first_ptr);
-      p *second_el = LOOKUP_GLOB(second_ptr);
+      p2 *first_el = intr + first_ptr;
+      p2 *second_el = intr + second_ptr;
       if (first_el->second < second_el->second) {
         merge_buf[merge_ptr++] = *first_el;
         first_ptr++;
@@ -210,15 +210,15 @@ void merge_lists(int lower, int upper) {
       }
     }
     while (first_ptr < first_bound) {
-      merge_buf[merge_ptr++] = *LOOKUP_GLOB(first_ptr);
+      merge_buf[merge_ptr++] = intr[first_ptr];
       first_ptr++;
     }
     while (second_ptr < upper) {
-      merge_buf[merge_ptr++] = *LOOKUP_GLOB(second_ptr);
+      merge_buf[merge_ptr++] = intr[second_ptr];
       second_ptr++;
     }
     for (int i = lower; i < upper; i++) {
-      *LOOKUP_GLOB(i) = merge_buf[i - lower];
+      intr[i] = merge_buf[i - lower];
     }
   }
 }
@@ -258,7 +258,7 @@ int main(int argc, char **argv) {
   int num_bounds = 1;
   bound *cur_bounds = bounds1;
   cur_bounds[0] = (bound){0, chars};
-  merge_buf = (p *)malloc(sizeof(p) * buf_size);
+  merge_buf = (p2 *)malloc(sizeof(p2) * buf_size);
   // only for CPU-only version
   sort_buf = (p *)malloc(sizeof(p) * LIST_SIZE);
   for (int i = 0; i < chars; i++) {
@@ -368,11 +368,17 @@ int main(int argc, char **argv) {
     uint64_t sort_start = rdtsc();
     do_full_sort();
     sort_time += rdtsc() - sort_start;
+    for (int i = 0; i < chars; i++) {
+      intr[i] = (p2) {data1[i].second, data1[i].i};
+    }
     uint64_t merge_start = rdtsc();
     for (int i = 0; i < num_bounds; i++) {
       merge_lists(cur_bounds[i].start, cur_bounds[i].end);
     }
     merge_time += rdtsc() - merge_start;
+    for (int i = 0; i < chars; i++) {
+      data1[i] = (p) {intr[i].second, data1[i].first, intr[i].i};
+    }
   }
   gettimeofday(&end, 0);
   timersub(&end, &start, &diff);
