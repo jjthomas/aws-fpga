@@ -114,11 +114,17 @@ typedef struct __attribute__((packed)) {
 } p;
 
 typedef struct {
+  unsigned int second;
+  unsigned int i;
+} p2;
+
+typedef struct {
   int start;
   int end;
 } bound;
 
 p *data1;
+p2 *intr;
 p *merge_buf;
 p *sort_buf;
 int buf_size;
@@ -245,6 +251,7 @@ int main(int argc, char **argv) {
   num_lists = buf_size / LIST_SIZE;
   data1 = (p *)malloc(sizeof(p) * buf_size);
   p *data2 = (p *)malloc(sizeof(p) * chars);
+  intr = (p2 *)malloc(sizeof(p2) * chars);
   int *ranks = (int *)calloc(chars * 2, sizeof(int));
   bound *bounds1 = (bound *)malloc(sizeof(bound) * chars);
   bound *bounds2 = (bound *)malloc(sizeof(bound) * chars);
@@ -308,16 +315,19 @@ int main(int argc, char **argv) {
   }
   merge_time += rdtsc() - radix_start;
   while (1) {
+    for (int i = 0; i < chars; i++) {
+      intr[i] = (p2) {data1[i].second, data1[i].i};
+    }
     uint64_t update_start = rdtsc();
     bound *next_bounds = (cur_bounds == bounds1) ? bounds2 : bounds1;
     int next_num_bounds = 0;
     for (int i = 0; i < num_bounds; i++) {
       int cur_start = cur_bounds[i].start;
-      ranks[LOOKUP_GLOB(cur_start)->i] = cur_start + 1;
+      ranks[intr[cur_start].i] = cur_start + 1;
       for (int j = cur_bounds[i].start + 1; j < cur_bounds[i].end; j++) {
-        p *cur = LOOKUP_GLOB(j);
-        p *prev = LOOKUP_GLOB(j - 1);
-        if (cur->first != prev->first || cur->second != prev->second) {
+        p2 *cur = intr + j;
+        p2 *prev = intr + (j - 1);
+        if (cur->second != prev->second) {
           if (j - cur_start > 1) {
             next_bounds[next_num_bounds++] = (bound){cur_start, j};
           }
@@ -335,12 +345,22 @@ int main(int argc, char **argv) {
     }
     for (int i = 0; i < num_bounds; i++) {
       for (int j = cur_bounds[i].start; j < cur_bounds[i].end; j++) {
-        p *cur = LOOKUP_GLOB(j);
-        cur->first = ranks[cur->i];
+        p2 *cur = intr + j;
+        // cur->first = ranks[cur->i];
         cur->second = ranks[cur->i + gap];
       }
     }
     update_time += rdtsc() - update_start;
+    for (int i = 0; i < chars; i++) {
+      data1[i] = (p) {intr[i].second, data1[i].first, intr[i].i};
+    }
+    for (int i = 0; i < num_bounds; i++) {
+      for (int j = cur_bounds[i].start; j < cur_bounds[i].end; j++) {
+        p *cur = LOOKUP_GLOB(j);
+        cur->first = ranks[cur->i];
+        // cur->second = ranks[cur->i + gap];
+      }
+    }
     cur_bounds = next_bounds;
     num_bounds = next_num_bounds;
     gap *= 2;
@@ -360,6 +380,17 @@ int main(int argc, char **argv) {
   printf("%lld/%lld/%lld/%lld\n", sort_time, update_time, merge_time, rdtsc() - total_start);
   printf("%d\n", ranks[0]);
   printf("%d\n", gap);
+  char last_char = buf[LOOKUP_GLOB(0)->i == 0 ? chars - 1 : LOOKUP_GLOB(0)->i - 1];
+  int diff_count = 0;
+  for (int i = 1; i < chars; i++) {
+    char cur_char = buf[LOOKUP_GLOB(i)->i == 0 ? chars - 1 : LOOKUP_GLOB(i)->i - 1];
+    if (cur_char != last_char) {
+      diff_count++;
+      last_char = cur_char;
+    }
+  }
+  diff_count++;
+  printf("diff count: %d\n", diff_count);
 #ifdef FPGA
 out:
   if (fd >= 0) {
