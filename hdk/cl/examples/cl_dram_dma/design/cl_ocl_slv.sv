@@ -19,6 +19,8 @@ module cl_ocl_slv (
    input sync_rst_n,
 
    input sh_cl_flr_assert_q,
+   input set_streaming_finished,
+   output logic streaming_active,
 
    axi_bus_t.master sh_ocl_bus,
 
@@ -151,7 +153,7 @@ always_ff @(negedge sync_rst_n or posedge clk)
     slv_req_rd_id <= 0;
   end
 
-   
+
 //Mux address
 assign slv_mx_addr = (slv_cyc_wr)? slv_req_wr_addr : slv_req_rd_addr;
    
@@ -333,6 +335,24 @@ assign int_tst_cfg_bus.wr = slv_tst_wr[13];
 assign int_tst_cfg_bus.rd = slv_tst_rd[13];
 
 
+logic [31:0] cycle_counter;
+
+always_ff @(negedge sync_rst_n or posedge clk)
+  if (!sync_rst_n) begin
+    streaming_active <= 0;
+  end
+  else if (set_streaming_finished) begin
+    streaming_active <= 0;
+  end
+  else if (slv_tst_wr[5]) begin
+    streaming_active <= 1'b1;
+    cycle_counter <= 0;
+  end
+  else if (streaming_active) begin
+    cycle_counter <= cycle_counter + 32'b1;
+  end
+
+
 //respond back with deadbeef for addresses not implemented
 always_comb begin
   //for pcim
@@ -350,10 +370,16 @@ always_comb begin
   //for DDRD
   tst_slv_ack[4] = ddrd_tst_cfg_bus.ack;
   tst_slv_rdata[4] = ddrd_tst_cfg_bus.rdata;
+  // for streaming_active
+  tst_slv_ack[5] = 1'b1;
+  tst_slv_rdata[5] = streaming_active;
+  // for cycle_counter
+  tst_slv_ack[6] = 1'b1;
+  tst_slv_rdata[6] = cycle_counter;
   //for int ATG
   tst_slv_ack[13] = int_tst_cfg_bus.ack;
   tst_slv_rdata[13] = int_tst_cfg_bus.rdata;
-  for(int i=5; i<13; i++) begin
+  for(int i=7; i<13; i++) begin
     tst_slv_ack[i] = 1'b1;
     tst_slv_rdata[i] = 32'hdead_beef;
   end
