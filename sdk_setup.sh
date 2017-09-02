@@ -15,7 +15,7 @@
 # permissions and limitations under the License.
 #
 
-export SDK_DIR=${SDK_DIR:=$(pwd)/sdk}
+export SDK_DIR=/home/centos/src/project_data/aws-fpga/sdk
 
 echo "Done setting environment variables."
 

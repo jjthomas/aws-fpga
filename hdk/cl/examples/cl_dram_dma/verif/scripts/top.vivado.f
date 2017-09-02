@@ -34,19 +34,19 @@
 --include ${HDK_SHELL_DESIGN_DIR}/sh_ddr/sim
 
 
-${SH_LIB_DIR}/../ip/cl_axi_interconnect/ip/cl_axi_interconnect_xbar_0/sim/cl_axi_interconnect_xbar_0.v
-${SH_LIB_DIR}/../ip/cl_axi_interconnect/ip/cl_axi_interconnect_s00_regslice_0/sim/cl_axi_interconnect_s00_regslice_0.v
-${SH_LIB_DIR}/../ip/cl_axi_interconnect/ip/cl_axi_interconnect_s01_regslice_0/sim/cl_axi_interconnect_s01_regslice_0.v
-${SH_LIB_DIR}/../ip/cl_axi_interconnect/ip/cl_axi_interconnect_m00_regslice_0/sim/cl_axi_interconnect_m00_regslice_0.v
-${SH_LIB_DIR}/../ip/cl_axi_interconnect/ip/cl_axi_interconnect_m01_regslice_0/sim/cl_axi_interconnect_m01_regslice_0.v
-${SH_LIB_DIR}/../ip/cl_axi_interconnect/ip/cl_axi_interconnect_m02_regslice_0/sim/cl_axi_interconnect_m02_regslice_0.v
-${SH_LIB_DIR}/../ip/cl_axi_interconnect/ip/cl_axi_interconnect_m03_regslice_0/sim/cl_axi_interconnect_m03_regslice_0.v
+${SH_LIB_DIR}/../ip/cl_axi_interconnect/ip/cl_axi_interconnect_xbar_0/synth/cl_axi_interconnect_xbar_0.v
+${SH_LIB_DIR}/../ip/cl_axi_interconnect/ip/cl_axi_interconnect_s00_regslice_0/synth/cl_axi_interconnect_s00_regslice_0.v
+${SH_LIB_DIR}/../ip/cl_axi_interconnect/ip/cl_axi_interconnect_s01_regslice_0/synth/cl_axi_interconnect_s01_regslice_0.v
+${SH_LIB_DIR}/../ip/cl_axi_interconnect/ip/cl_axi_interconnect_m00_regslice_0/synth/cl_axi_interconnect_m00_regslice_0.v
+${SH_LIB_DIR}/../ip/cl_axi_interconnect/ip/cl_axi_interconnect_m01_regslice_0/synth/cl_axi_interconnect_m01_regslice_0.v
+${SH_LIB_DIR}/../ip/cl_axi_interconnect/ip/cl_axi_interconnect_m02_regslice_0/synth/cl_axi_interconnect_m02_regslice_0.v
+${SH_LIB_DIR}/../ip/cl_axi_interconnect/ip/cl_axi_interconnect_m03_regslice_0/synth/cl_axi_interconnect_m03_regslice_0.v
 ${SH_LIB_DIR}/../ip/cl_axi_interconnect/hdl/cl_axi_interconnect.v
-${SH_LIB_DIR}/../ip/axi_clock_converter_0/sim/axi_clock_converter_0.v
-${SH_LIB_DIR}/../ip/dest_register_slice/sim/dest_register_slice.v
-${SH_LIB_DIR}/../ip/src_register_slice/sim/src_register_slice.v
-${SH_LIB_DIR}/../ip/axi_register_slice/sim/axi_register_slice.v
-${SH_LIB_DIR}/../ip/axi_register_slice_light/sim/axi_register_slice_light.v
+${SH_LIB_DIR}/../ip/axi_clock_converter_0/synth/axi_clock_converter_0.v
+${SH_LIB_DIR}/../ip/dest_register_slice/synth/dest_register_slice.v
+${SH_LIB_DIR}/../ip/src_register_slice/synth/src_register_slice.v
+${SH_LIB_DIR}/../ip/axi_register_slice/synth/axi_register_slice.v
+${SH_LIB_DIR}/../ip/axi_register_slice_light/synth/axi_register_slice_light.v
 
 --define DISABLE_VJTAG_DEBUG
 ${CL_ROOT}/design/axil_slave.sv
