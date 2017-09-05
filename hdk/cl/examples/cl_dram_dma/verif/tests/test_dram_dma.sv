@@ -27,10 +27,13 @@ module test_dram_dma();
 
        logic [63:0] host_memory_buffer_address;
        logic [511:0] input_metadata;
+       logic [511:0] output_metadata;
+       logic[31:0] streaming_active;
+       logic[31:0] cycle_count;
+
        input_metadata[63:0] = 64'd64; // input addr
        input_metadata[127:64] = 64'd512; // input length in bits
        input_metadata[191:128] = 64'd0; // output addr
-       logic [511:0] output_metadata;
        output_metadata[63:0] = 64'd512;
        
 
@@ -65,7 +68,7 @@ module test_dram_dma();
 
        // Put test pattern in host memory       
        for (int i = 0; i < 64; i++) begin
-          tb.hm_put_byte(.addr(host_memory_buffer_address), .d(input_metadata[(i+1)*8-1:i*8]));
+          tb.hm_put_byte(.addr(host_memory_buffer_address), .d(input_metadata[i*8 +: 8]));
           host_memory_buffer_address++;
        end
        for (int i = 0; i < 64; i++) begin
@@ -78,7 +81,7 @@ module test_dram_dma();
 
        // Put test pattern in host memory       
        for (int i = 0; i < 64; i++) begin
-          tb.hm_put_byte(.addr(host_memory_buffer_address), .d(input_metadata[(i+1)*8-1:i*8]));
+          tb.hm_put_byte(.addr(host_memory_buffer_address), .d(input_metadata[i*8 +: 8]));
           host_memory_buffer_address++;
        end
        for (int i = 0; i < 64; i++) begin
@@ -108,12 +111,11 @@ module test_dram_dma();
           error_count++;
        end
 
-       poke_ocl(.addr(64'h500), .data(32'h1));
+       tb.poke_ocl(.addr(64'h500), .data(32'h1));
 
-       logic[31:0] streaming_active;
        timeout_count = 0;
        do begin
-          peek_ocl(.addr(64'h500), .data(streaming_active));
+          tb.peek_ocl(.addr(64'h500), .data(streaming_active));
           #10ns;
           timeout_count++;
        end while ((streaming_active != 32'h0) && (timeout_count < 10000));
@@ -159,7 +161,7 @@ module test_dram_dma();
    
        host_memory_buffer_address = 64'h0_0003_2800;
        for (int i = 0; i < 8; i++) begin
-         if (tb.hm_get_byte(.addr(host_memory_buffer_address + i)) !== output_metadata[(i+1)*8-1:i*8]) begin
+         if (tb.hm_get_byte(.addr(host_memory_buffer_address + i)) !== output_metadata[i*8 +: 8]) begin
            $display("[%t] : *** ERROR *** DDR2 Data mismatch, addr:%0x read data is: %0x", 
                             $realtime, (host_memory_buffer_address + i), tb.hm_get_byte(.addr(host_memory_buffer_address + i)));
            error_count++;
@@ -180,7 +182,7 @@ module test_dram_dma();
 
        host_memory_buffer_address = 64'h0_0004_3800;
        for (int i = 0; i < 8; i++) begin
-         if (tb.hm_get_byte(.addr(host_memory_buffer_address + i)) !== output_metadata[(i+1)*8-1:i*8]) begin
+         if (tb.hm_get_byte(.addr(host_memory_buffer_address + i)) !== output_metadata[i*8 +: 8]) begin
            $display("[%t] : *** ERROR *** DDR3 Data mismatch, addr:%0x read data is: %0x", 
                             $realtime, (host_memory_buffer_address + i), tb.hm_get_byte(.addr(host_memory_buffer_address + i)));
            error_count++;
@@ -195,8 +197,7 @@ module test_dram_dma();
          end    
        end
 
-       logic[31:0] cycle_count;
-       peek_ocl(.addr(64'h600), .data(cycle_count));
+       tb.peek_ocl(.addr(64'h600), .data(cycle_count));
        $display("[%t] : streaming cycle count is %0x", $realtime, cycle_count);
 
        
