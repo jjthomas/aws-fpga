@@ -77,7 +77,7 @@ module test_dram_dma();
        end
        
        host_memory_buffer_address = 64'h0_0000_3000;
-       tb.que_buffer_to_cl(.chan(1), .src_addr(host_memory_buffer_address), .cl_addr(64'h0), .len(128) );  // move buffer to DDR 1
+       tb.que_buffer_to_cl(.chan(1), .src_addr(host_memory_buffer_address), .cl_addr(64'h4_0000_0000), .len(128) );  // move buffer to DDR 1
 
        // Put test pattern in host memory       
        for (int i = 0; i < 64; i++) begin
@@ -124,14 +124,15 @@ module test_dram_dma();
           error_count++;
        end
 
+       $display("[%t] : streaming finished in %0x ticks", $realtime, timeout_count);
        $display("[%t] : starting C2H DMA channels ", $realtime);
 
        // read the data from cl and put it in the host memory 
        host_memory_buffer_address = 64'h0_0003_2800;                                                                                        
-       tb.que_cl_to_buffer(.chan(2), .dst_addr(host_memory_buffer_address), .cl_addr(64'h0), .len(128) );  // move DDR2 to buffer
+       tb.que_cl_to_buffer(.chan(2), .dst_addr(host_memory_buffer_address), .cl_addr(64'h8_0000_0000), .len(128) );  // move DDR2 to buffer
                                                                                                                                             
        host_memory_buffer_address = 64'h0_0004_3800;                                                                                        
-       tb.que_cl_to_buffer(.chan(3), .dst_addr(host_memory_buffer_address), .cl_addr(64'h0), .len(128) );  // move DDR3 to buffer
+       tb.que_cl_to_buffer(.chan(3), .dst_addr(host_memory_buffer_address), .cl_addr(64'hC_0000_0000), .len(128) );  // move DDR3 to buffer
        
        //Start transfers of data from CL DDR
        tb.start_que_to_buffer(.chan(2));   
