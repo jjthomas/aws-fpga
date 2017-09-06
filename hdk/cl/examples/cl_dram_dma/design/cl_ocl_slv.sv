@@ -371,10 +371,10 @@ always_comb begin
   tst_slv_ack[4] = ddrd_tst_cfg_bus.ack;
   tst_slv_rdata[4] = ddrd_tst_cfg_bus.rdata;
   // for streaming_active
-  tst_slv_ack[5] = 1'b1;
+  tst_slv_ack[5] = slv_tst_rd[5] | slv_tst_wr[5];
   tst_slv_rdata[5] = streaming_active;
   // for cycle_counter
-  tst_slv_ack[6] = 1'b1;
+  tst_slv_ack[6] = slv_tst_rd[6];
   tst_slv_rdata[6] = cycle_counter;
   //for int ATG
   tst_slv_ack[13] = int_tst_cfg_bus.ack;
