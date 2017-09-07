@@ -540,25 +540,27 @@ logic[2:0] cl_sh_ddr_rready_2d;
 
 // TODO might want to relax awid & wid for performance reasons
 assign cl_sh_ddr_awid_2d = '{sw_reset_done ? 16'b0 : lcl_cl_sh_ddrd.awid, sw_reset_done ? 16'b0 : lcl_cl_sh_ddrb.awid, sw_reset_done ? 16'b0 : lcl_cl_sh_ddra.awid};
-assign cl_sh_ddr_awaddr_2d = '{sw_reset_done ? sw_cl_sh_ddrd_awaddr : lcl_cl_sh_ddrd.awaddr, sw_reset_done ? 64'b0 : lcl_cl_sh_ddrb.awaddr, sw_reset_done ? 64'b0 : lcl_cl_sh_ddra.awaddr};
+assign cl_sh_ddr_awaddr_2d = '{sw_reset_done ? sw_cl_sh_ddrd_awaddr : lcl_cl_sh_ddrd.awaddr, sw_reset_done ? 64'b0 : lcl_cl_sh_ddrb.awaddr, sw_reset_done ? sw_cl_sh_ddrc_awaddr : lcl_cl_sh_ddra.awaddr};
 assign cl_sh_ddr_awlen_2d = '{sw_reset_done ? 8'b0 : lcl_cl_sh_ddrd.awlen, sw_reset_done ? 8'b0 : lcl_cl_sh_ddrb.awlen, sw_reset_done ? 8'b0 : lcl_cl_sh_ddra.awlen};
 assign cl_sh_ddr_awsize_2d = '{sw_reset_done ? 3'b110 : lcl_cl_sh_ddrd.awsize, sw_reset_done ? 3'b110 : lcl_cl_sh_ddrb.awsize, sw_reset_done ? 3'b110 : lcl_cl_sh_ddra.awsize};
-assign cl_sh_ddr_awvalid_2d = '{sw_reset_done ? sw_cl_sh_ddrd_awvalid : lcl_cl_sh_ddrd.awvalid, sw_reset_done ? 1'b0 : lcl_cl_sh_ddrb.awvalid, sw_reset_done ? 1'b0 : lcl_cl_sh_ddra.awvalid};
+assign cl_sh_ddr_awvalid_2d = '{sw_reset_done ? sw_cl_sh_ddrd_awvalid : lcl_cl_sh_ddrd.awvalid, sw_reset_done ? 1'b0 : lcl_cl_sh_ddrb.awvalid, sw_reset_done ? sw_cl_sh_ddrc_awvalid : lcl_cl_sh_ddra.awvalid};
 assign {lcl_cl_sh_ddrd.awready, lcl_cl_sh_ddrb.awready, lcl_cl_sh_ddra.awready} = sw_reset_done ? {1'b0, 1'b0, 1'b0} : sh_cl_ddr_awready_2d;
 assign sw_cl_sh_ddrd_awready = sw_reset_done ? sh_cl_ddr_awready_2d[2] : 0;
+assign sw_cl_sh_ddrc_awready = sw_reset_done ? sh_cl_ddr_awready_2d[0] : 0;
 
 assign cl_sh_ddr_wid_2d = '{sw_reset_done ? 16'b0 : lcl_cl_sh_ddrd.wid, sw_reset_done ? 16'b0 : lcl_cl_sh_ddrb.wid, sw_reset_done ? 16'b0 : lcl_cl_sh_ddra.wid};
-assign cl_sh_ddr_wdata_2d = '{sw_reset_done ? sw_cl_sh_ddrd_wdata : lcl_cl_sh_ddrd.wdata, lcl_cl_sh_ddrb.wdata, lcl_cl_sh_ddra.wdata};
+assign cl_sh_ddr_wdata_2d = '{sw_reset_done ? sw_cl_sh_ddrd_wdata : lcl_cl_sh_ddrd.wdata, lcl_cl_sh_ddrb.wdata, sw_reset_done ? sw_cl_sh_ddrc_wdata : lcl_cl_sh_ddra.wdata};
 assign cl_sh_ddr_wstrb_2d = '{sw_reset_done ? 64'hffff_ffff_ffff_ffff : lcl_cl_sh_ddrd.wstrb, sw_reset_done ? 64'hffff_ffff_ffff_ffff : lcl_cl_sh_ddrb.wstrb, sw_reset_done ? 64'hffff_ffff_ffff_ffff : lcl_cl_sh_ddra.wstrb};
-assign cl_sh_ddr_wlast_2d = {sw_reset_done ? sw_cl_sh_ddrd_wvalid : lcl_cl_sh_ddrd.wlast, sw_reset_done ? 1'b0 : lcl_cl_sh_ddrb.wlast, sw_reset_done ? 1'b0 : lcl_cl_sh_ddra.wlast};
-assign cl_sh_ddr_wvalid_2d = {sw_reset_done ? sw_cl_sh_ddrd_wvalid : lcl_cl_sh_ddrd.wvalid, sw_reset_done ? 1'b0 : lcl_cl_sh_ddrb.wvalid, sw_reset_done ? 1'b0 : lcl_cl_sh_ddra.wvalid};
+assign cl_sh_ddr_wlast_2d = {sw_reset_done ? sw_cl_sh_ddrd_wvalid : lcl_cl_sh_ddrd.wlast, sw_reset_done ? 1'b0 : lcl_cl_sh_ddrb.wlast, sw_reset_done ? sw_cl_sh_ddrc_wvalid : lcl_cl_sh_ddra.wlast};
+assign cl_sh_ddr_wvalid_2d = {sw_reset_done ? sw_cl_sh_ddrd_wvalid : lcl_cl_sh_ddrd.wvalid, sw_reset_done ? 1'b0 : lcl_cl_sh_ddrb.wvalid, sw_reset_done ? sw_cl_sh_ddrc_wvalid : lcl_cl_sh_ddra.wvalid};
 assign {lcl_cl_sh_ddrd.wready, lcl_cl_sh_ddrb.wready, lcl_cl_sh_ddra.wready} = sw_reset_done ? {1'b0, 1'b0, 1'b0} : sh_cl_ddr_wready_2d;
 assign sw_cl_sh_ddrd_wready = sw_reset_done ? sh_cl_ddr_wready_2d[2] : 0;
+assign sw_cl_sh_ddrc_wready = sw_reset_done ? sh_cl_ddr_wready_2d[0] : 0;
 
 assign {lcl_cl_sh_ddrd.bid, lcl_cl_sh_ddrb.bid, lcl_cl_sh_ddra.bid} = {sh_cl_ddr_bid_2d[2], sh_cl_ddr_bid_2d[1], sh_cl_ddr_bid_2d[0]};
 assign {lcl_cl_sh_ddrd.bresp, lcl_cl_sh_ddrb.bresp, lcl_cl_sh_ddra.bresp} = {sh_cl_ddr_bresp_2d[2], sh_cl_ddr_bresp_2d[1], sh_cl_ddr_bresp_2d[0]};
 assign {lcl_cl_sh_ddrd.bvalid, lcl_cl_sh_ddrb.bvalid, lcl_cl_sh_ddra.bvalid} = sw_reset_done ? {1'b0, 1'b0, 1'b0} : sh_cl_ddr_bvalid_2d;
-assign cl_sh_ddr_bready_2d = {sw_reset_done ? 1'b1 : lcl_cl_sh_ddrd.bready, sw_reset_done ? 1'b0 : lcl_cl_sh_ddrb.bready, sw_reset_done ? 1'b0 : lcl_cl_sh_ddra.bready};
+assign cl_sh_ddr_bready_2d = {sw_reset_done ? 1'b1 : lcl_cl_sh_ddrd.bready, sw_reset_done ? 1'b0 : lcl_cl_sh_ddrb.bready, sw_reset_done ? 1'b1 : lcl_cl_sh_ddra.bready};
 
 assign cl_sh_ddr_arid_2d = '{sw_reset_done ? 16'b0 : lcl_cl_sh_ddrd.arid, sw_reset_done ? 16'b0 : lcl_cl_sh_ddrb.arid, sw_reset_done ? 16'b0 : lcl_cl_sh_ddra.arid};
 assign cl_sh_ddr_araddr_2d = '{sw_reset_done ? 64'b0 : lcl_cl_sh_ddrd.araddr, sw_reset_done ? sw_cl_sh_ddrb_araddr : lcl_cl_sh_ddrb.araddr, sw_reset_done ? sw_cl_sh_ddra_araddr : lcl_cl_sh_ddra.araddr};
@@ -577,6 +579,7 @@ assign {lcl_cl_sh_ddrd.rvalid, lcl_cl_sh_ddrb.rvalid, lcl_cl_sh_ddra.rvalid} = s
 assign {sw_cl_sh_ddrb_rvalid, sw_cl_sh_ddra_rvalid} = sw_reset_done ? {sh_cl_ddr_rvalid_2d[1], sh_cl_ddr_rvalid_2d[0]} : {1'b0, 1'b0};
 assign cl_sh_ddr_rready_2d = sw_reset_done ? {1'b0, sw_cl_sh_ddrb_rready, sw_cl_sh_ddra_rready} : {lcl_cl_sh_ddrd.rready, lcl_cl_sh_ddrb.rready, lcl_cl_sh_ddra.rready};
 
+/*
 assign cl_sh_ddr_awid = sw_reset_done ? 0 : cl_sh_ddr_bus.awid;
 assign cl_sh_ddr_awaddr = sw_reset_done ? sw_cl_sh_ddrc_awaddr : cl_sh_ddr_bus.awaddr;
 assign cl_sh_ddr_awlen = sw_reset_done ? 0 : cl_sh_ddr_bus.awlen;
@@ -607,6 +610,7 @@ assign cl_sh_ddr_bus.rvalid = sw_reset_done ? 0 : sh_cl_ddr_rvalid;
 assign cl_sh_ddr_bus.rdata = sh_cl_ddr_rdata;
 assign cl_sh_ddr_bus.rlast = sh_cl_ddr_rlast;
 assign cl_sh_ddr_rready = sw_reset_done ? 0 : cl_sh_ddr_bus.rready;
+*/
 
 (* dont_touch = "true" *) logic sh_ddr_sync_rst_n;
 lib_pipe #(.WIDTH(1), .STAGES(4)) SH_DDR_SLC_RST_N (.clk(clk), .rst_n(1'b1), .in_bus(sync_rst_n), .out_bus(sh_ddr_sync_rst_n));
