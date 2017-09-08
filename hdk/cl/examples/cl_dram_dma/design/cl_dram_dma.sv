@@ -464,13 +464,16 @@ always_ff @(negedge sync_rst_n or posedge clk)
     sw_reset_done <= 0;
   end
   else if (sw_reset_done && sw_finished) begin
+    $display("sw_reset_done back to 0!");
     sw_reset_done <= 0;
   end
   else if (sw_reset) begin
+    $display("sw_reset_done set!");
     sw_reset <= 0;
     sw_reset_done <= 1'b1;
   end
   else if (streaming_active && !sw_reset_done) begin
+    $display("sw_reset set!");
     sw_reset <= 1'b1;
   end
 
@@ -576,6 +579,47 @@ assign {lcl_cl_sh_ddrd.rlast, lcl_cl_sh_ddrb.rlast, lcl_cl_sh_ddra.rlast} = sw_r
 assign {lcl_cl_sh_ddrd.rvalid, lcl_cl_sh_ddrb.rvalid, lcl_cl_sh_ddra.rvalid} = sw_reset_done ? {1'b0, 1'b0, 1'b0} : sh_cl_ddr_rvalid_2d;
 assign {sw_cl_sh_ddrb_rvalid, sw_cl_sh_ddra_rvalid} = sw_reset_done ? {sh_cl_ddr_rvalid_2d[1], sh_cl_ddr_rvalid_2d[0]} : {1'b0, 1'b0};
 assign cl_sh_ddr_rready_2d = sw_reset_done ? {1'b0, sw_cl_sh_ddrb_rready, sw_cl_sh_ddra_rready} : {lcl_cl_sh_ddrd.rready, lcl_cl_sh_ddrb.rready, lcl_cl_sh_ddra.rready};
+
+
+always_ff @(posedge clk)
+  if (cl_sh_ddr_awvalid_2d[1] && sh_cl_ddr_awready_2d[1]) begin
+    $display("DDR B write address: %0x", cl_sh_ddr_awaddr_2d[1]);
+  end
+
+always_ff @(posedge clk)
+  if (cl_sh_ddr_awvalid_2d[0] && sh_cl_ddr_awready_2d[0]) begin
+    $display("DDR A write address: %0x", cl_sh_ddr_awaddr_2d[0]);
+  end
+
+always_ff @(posedge clk)
+  if (cl_sh_ddr_awvalid_2d[2] && sh_cl_ddr_awready_2d[2]) begin
+    $display("DDR D write address: %0x", cl_sh_ddr_awaddr_2d[2]);
+  end
+
+always_ff @(posedge clk)
+  if (cl_sh_ddr_awvalid && sh_cl_ddr_awready) begin
+    $display("DDR C write address: %0x", cl_sh_ddr_awaddr);
+  end
+
+always_ff @(posedge clk)
+  if (cl_sh_ddr_arvalid_2d[1] && sh_cl_ddr_arready_2d[1]) begin
+    $display("DDR B read address: %0x", cl_sh_ddr_araddr_2d[1]);
+  end
+
+always_ff @(posedge clk)
+  if (cl_sh_ddr_arvalid_2d[0] && sh_cl_ddr_arready_2d[0]) begin
+    $display("DDR A read address: %0x", cl_sh_ddr_araddr_2d[0]);
+  end
+
+always_ff @(posedge clk)
+  if (cl_sh_ddr_arvalid_2d[2] && sh_cl_ddr_arready_2d[2]) begin
+    $display("DDR D read address: %0x", cl_sh_ddr_araddr_2d[2]);
+  end
+
+always_ff @(posedge clk)
+  if (cl_sh_ddr_arvalid && sh_cl_ddr_arready) begin
+    $display("DDR C read address: %0x", cl_sh_ddr_araddr);
+  end
 
 assign cl_sh_ddr_awid = sw_reset_done ? 0 : cl_sh_ddr_bus.awid;
 assign cl_sh_ddr_awaddr = sw_reset_done ? sw_cl_sh_ddrc_awaddr : cl_sh_ddr_bus.awaddr;

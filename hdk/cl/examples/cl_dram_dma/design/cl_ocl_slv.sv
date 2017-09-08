@@ -345,6 +345,7 @@ always_ff @(negedge sync_rst_n or posedge clk)
     streaming_active <= 0;
   end
   else if (slv_tst_wr[5]) begin
+    $display("streaming_active set!");
     streaming_active <= 1'b1;
     cycle_counter <= 0;
   end
@@ -352,6 +353,17 @@ always_ff @(negedge sync_rst_n or posedge clk)
     cycle_counter <= cycle_counter + 32'b1;
   end
 
+
+always_ff @(negedge sync_rst_n or posedge clk)
+  if (slv_tst_rd[6]) begin
+    $display("cycle_counter read!");
+  end
+
+always_ff @(negedge sync_rst_n or posedge clk)
+  if (slv_tst_wr) begin
+    $display("slv_tst_wr: 0x%0x", slv_tst_wr);
+    $display("slv_mx_addr: 0x%0x", slv_mx_addr);
+  end
 
 //respond back with deadbeef for addresses not implemented
 always_comb begin
