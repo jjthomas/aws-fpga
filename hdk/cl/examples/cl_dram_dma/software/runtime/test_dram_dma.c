@@ -25,6 +25,10 @@
 #include <fpga_mgmt.h>
 #include <utils/lcd.h>
 
+typedef struct __attribute__((packed)) {
+  uint64_t data[8];
+} cache_line;
+
 static uint16_t pci_vendor_id = 0x1D0F; /* Amazon PCI Vendor ID */
 static uint16_t pci_device_id = 0xF001;
 /* */
@@ -40,7 +44,6 @@ int interrupt_example(int slot_id, int interrupt_number);
 int main(int argc, char **argv) {
     int rc;
     int slot_id;
-    int interrupt_number;
 
     /* setup logging to print to stdout */
     rc = log_init("test_dram_dma");
@@ -56,11 +59,6 @@ int main(int argc, char **argv) {
 
     rc = dma_example(slot_id);
     fail_on(rc, out, "DMA example failed");
-
-    interrupt_number = 0;
-
-    rc = interrupt_example(slot_id, interrupt_number);
-    fail_on(rc, out, "Interrupt example failed");
 
 out:
     return rc;
@@ -102,28 +100,6 @@ out:
 }
 
 
-/* helper function to initialize a buffer that would be written to the FPGA later */
-
-void
-rand_string(char *str, size_t size)
-{
-    static const char charset[] =
-        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRTSUVWXYZ1234567890";
-    static bool seeded = false;
-
-    if (!seeded) {
-        srand(time(NULL));
-        seeded = true;
-    }
-
-    for(int i = 0; i < size-1; ++i) {
-        unsigned int key = rand() % (sizeof charset - 1);
-        str[i] = charset[key];
-    }
-
-    str[size-1] = '\0';
-}
-
 /* 
  * Write 4 identical buffers to the 4 different DRAM channels of the AFI
  * using fsync() between the writes and read to insure order
@@ -132,8 +108,8 @@ rand_string(char *str, size_t size)
 int dma_example(int slot_id) {
     int fd, rc;
     char device_file_name[256];
-    char *write_buffer, *read_buffer;
-    static const size_t buffer_size = 128;
+    char *write_buffer, *read_buffer, *expected_read_buffer;
+    static const size_t buffer_size = 128 * 25;
     int channel=0;
 
     read_buffer = NULL;
@@ -163,14 +139,31 @@ int dma_example(int slot_id) {
 
     write_buffer = (char *)malloc(buffer_size);
     read_buffer = (char *)malloc(buffer_size);
-    if (write_buffer == NULL || read_buffer == NULL) {
+    expected_read_buffer = (char *)malloc(buffer_size);
+    if (write_buffer == NULL || read_buffer == NULL || expected_read_buffer == NULL) {
         rc = ENOMEM;
         goto out;
     }
 
-    rand_string(write_buffer, buffer_size);
+    cache_line *cl_wb = (cache_line *)write_buffer; 
+    cache_line *cl_rb = (cache_line *)write_buffer; 
+    for (int i = 0; i < 25; i++) { 
+      cl_wb[i].data[0] = 64 * (25 + i);
+      cl_wb[i].data[1] = 512;
+      cl_wb[i].data[2] = 128 * i;
 
-    for (channel=0; channel < 4; channel++) {
+      cl_rb[i].data[0] = 512;
+    }
+    for (int i = 25; i < 50; i++) { 
+      for (int j = 0; j < 8; j++) {
+        cl_wb[i].data[j] = i + j;
+
+        cl_rb[i].data[j] = i + j;
+      }
+    }
+
+
+    for (channel=0; channel < 2; channel++) {
         size_t write_offset = 0;
         while (write_offset < buffer_size) {
             if (write_offset != 0) {
@@ -180,7 +173,7 @@ int dma_example(int slot_id) {
             rc = pwrite(fd,
                 write_buffer + write_offset,
                 buffer_size - write_offset,
-                0x10000000 + channel*MEM_16G + write_offset);
+                channel*MEM_16G + write_offset);
             if (rc < 0) {
                 fail_on((rc = (rc < 0)? errno:0), out, "call to pwrite failed.");
             }
@@ -195,7 +188,15 @@ int dma_example(int slot_id) {
 
     fsync(fd);
 
-    for (channel=0; channel < 4; channel++) {
+    pci_bar_handle_t pci_bar_handle = PCI_BAR_HANDLE_INIT;
+    fpga_pci_poke(pci_bar_handle, 0x500, 1);
+    uint32_t sw_status;
+    do {
+      fpga_pci_peek(pci_bar_handle, 0x500, &sw_status);
+      usleep(10000);
+    } while (sw_status != 0);
+
+    for (channel=2; channel < 4; channel++) {
         size_t read_offset = 0;
         while (read_offset < buffer_size) {
             if (read_offset != 0) {
@@ -205,7 +206,7 @@ int dma_example(int slot_id) {
             rc = pread(fd,
                 read_buffer + read_offset,
                 buffer_size - read_offset,
-                0x10000000 + channel*MEM_16G + read_offset);
+                channel*MEM_16G + read_offset);
             if (rc < 0) {
                 fail_on((rc = (rc < 0)? errno:0), out, "call to pread failed.");
             }
@@ -213,20 +214,20 @@ int dma_example(int slot_id) {
         }
         rc = 0;
 
-    	if (memcmp(write_buffer, read_buffer, buffer_size) == 0) {
-        	printf("DRAM DMA read the same string as it wrote on channel %d (it worked correctly!)\n", channel);
+    	if (memcmp(expected_read_buffer, read_buffer, buffer_size) == 0) {
+        	printf("DRAM DMA read the correct string for channel %d (it worked correctly!)\n", channel);
     	} else {
             int i;
-            printf("Bytes written to channel %d:\n", channel);
-            for (i = 0; i < buffer_size; ++i) {
-                printf("%c", write_buffer[i]);
+            printf("Numbers expected from channel %d:\n", channel);
+            for (i = 0; i < buffer_size/8; ++i) {
+                printf("%" PRIu64 " ", ((uint64_t *)expected_read_buffer)[i]);
             }
 
             printf("\n\n");
 
-            printf("Bytes read:\n");
-            for (i = 0; i < buffer_size; ++i) {
-                printf("%c", read_buffer[i]);
+            printf("Numbers read:\n");
+            for (i = 0; i < buffer_size/8; ++i) {
+                printf("%" PRIu64 " ", ((uint64_t *)read_buffer)[i]);
             }
             printf("\n\n");
          
@@ -242,82 +243,12 @@ out:
     if (read_buffer != NULL) {
         free(read_buffer);
     }
+    if (expected_read_buffer != NULL) {
+        free(expected_read_buffer);
+    }
     if (fd >= 0) {
         close(fd);
     }
     /* if there is an error code, exit with status 1 */
     return (rc != 0 ? 1 : 0);
 }
-
-int interrupt_example(int slot_id, int interrupt_number){
-    pci_bar_handle_t pci_bar_handle = PCI_BAR_HANDLE_INIT;
-    struct pollfd fds[1];
-    uint32_t fd, rd,  read_data;
-    char event_file_name[256];
-    int rc = 0;
-    int poll_timeout = 1000;
-    int num_fds = 1;
-    int pf_id = 0;
-    int bar_id = 0;
-    int fpga_attach_flags = 0;
-    int poll_limit = 20;
-    uint32_t interrupt_reg_offset = 0xd00;
-
-  
-    rc = sprintf(event_file_name, "/dev/fpga%i_event%i", slot_id, interrupt_number);
-    fail_on((rc = (rc < 0)? 1:0), out, "Unable to format event file name.");
-
-    printf("Starting MSI-X Interrupt test \n");
-    rc = fpga_pci_attach(slot_id, pf_id, bar_id, fpga_attach_flags, &pci_bar_handle);
-    fail_on(rc, out, "Unable to attach to the AFI on slot id %d", slot_id);
-
-    printf("Polling device file: %s for interrupt events \n", event_file_name);
-    if((fd = open(event_file_name, O_RDONLY)) == -1) {
-        printf("Error - invalid device\n");
-        rc = 1;
-        fail_on(rc, out, "Unable to open event device");
-    }
-    fds[0].fd = fd;
-    fds[0].events = POLLIN;
-
-    printf("Triggering MSI-X Interrupt 0\n");
-    rc = fpga_pci_poke(pci_bar_handle, interrupt_reg_offset , 1 << interrupt_number);
-    fail_on(rc, out, "Unable to write to the fpga !");
-
-    // Poll checks whether an interrupt was generated, and also clears the interrupt in the device file, so we can detect future interrupts
-    rd = poll(fds, num_fds, poll_timeout);
-    if( rd >0 && fds[0].revents & POLLIN){
-        // Check how many interrupts were generated
-        printf("Interrupt present for Interrupt %i. It worked!\n", interrupt_number);
-        //Clear the interrupt register
-        rc = fpga_pci_poke(pci_bar_handle, interrupt_reg_offset , 0x1 << (16 + interrupt_number) );
-        fail_on(rc, out, "Unable to write to the fpga !");
-    }
-    else{
-        printf("No interrupt generated- something went wrong.\n");
-        rc = 1;
-        fail_on(rc, out, "Interrupt generation failed");
-    }
-    close(fd);
-
-    //Clear the interrupt register
-    do{
-        // In this CL, a successful interrupt is indicated by the CL setting bit <interrupt_number + 16>
-        // of the interrupt register. Here we check that bit is set and write 1 to it to clear.
-        rc = fpga_pci_peek(pci_bar_handle, interrupt_reg_offset, &read_data);
-        fail_on(rc, out, "Unable to read from the fpga !");
-        read_data = read_data & (1 << (interrupt_number + 16));
-
-        rc = fpga_pci_poke(pci_bar_handle, interrupt_reg_offset , read_data );
-        fail_on(rc, out, "Unable to write to the fpga !");
-
-        poll_limit--;
-    } while (!read_data && poll_limit > 0);
-
-out:
-    if(fd){
-        close(fd);
-    }
-    return rc;
-}
-
