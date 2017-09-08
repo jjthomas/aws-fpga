@@ -152,13 +152,13 @@ int dma_example(int slot_id) {
       cl_wb[i].data[1] = 512;
       cl_wb[i].data[2] = 128 * i;
 
-      cl_rb[i].data[0] = 512;
+      cl_rb[i * 2].data[0] = 512;
     }
     for (int i = 25; i < 50; i++) { 
       for (int j = 0; j < 8; j++) {
         cl_wb[i].data[j] = i + j;
 
-        cl_rb[i].data[j] = i + j;
+        cl_rb[(i - 25) * 2 + 1].data[j] = i + j;
       }
     }
 
@@ -190,11 +190,14 @@ int dma_example(int slot_id) {
 
     pci_bar_handle_t pci_bar_handle = PCI_BAR_HANDLE_INIT;
     fpga_pci_poke(pci_bar_handle, 0x500, 1);
-    uint32_t sw_status;
+    uint32_t reg_peek;
     do {
-      fpga_pci_peek(pci_bar_handle, 0x500, &sw_status);
+      fpga_pci_peek(pci_bar_handle, 0x500, &reg_peek);
       usleep(10000);
-    } while (sw_status != 0);
+    } while (reg_peek != 0);
+
+    fpga_pci_peek(pci_bar_handle, 0x600, &reg_peek);
+    printf("Number of cycles for streaming: %d\n", reg_peek);
 
     for (channel=2; channel < 4; channel++) {
         size_t read_offset = 0;
