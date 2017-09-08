@@ -16559,30 +16559,31 @@ module StreamingCore(
   wire  _T_49;
   wire  _T_50;
   wire  _T_51;
+  wire  _T_53;
   wire  _GEN_0;
   wire  inputBlockReadable;
-  wire  _T_54;
-  wire  _T_55;
+  wire  _T_56;
   wire  _T_57;
-  wire [9:0] _T_59;
-  wire [9:0] _T_60;
-  wire [63:0] _T_61;
-  wire [63:0] _T_62;
-  wire [63:0] _T_63;
-  wire [64:0] _T_65;
+  wire  _T_59;
+  wire [9:0] _T_61;
+  wire [9:0] _T_62;
+  wire [63:0] _T_65;
   wire [63:0] _T_66;
+  wire [63:0] _T_67;
+  wire [64:0] _T_69;
+  wire [63:0] _T_70;
   wire [63:0] _GEN_1;
   wire [63:0] _GEN_2;
   wire [63:0] _GEN_3;
   wire [63:0] _GEN_4;
   wire  _GEN_5;
   wire  _GEN_6;
-  wire  _T_71;
-  wire [64:0] _T_75;
-  wire [63:0] _T_76;
-  wire [63:0] _T_78;
-  wire [64:0] _T_80;
-  wire [63:0] _T_81;
+  wire  _T_75;
+  wire [64:0] _T_79;
+  wire [63:0] _T_80;
+  wire [63:0] _T_82;
+  wire [64:0] _T_84;
+  wire [63:0] _T_85;
   wire [63:0] _GEN_7;
   wire [63:0] _GEN_8;
   wire [63:0] _GEN_9;
@@ -16592,27 +16593,27 @@ module StreamingCore(
   wire  _GEN_13;
   wire  _GEN_14;
   wire  _GEN_15;
-  wire  _T_87;
+  wire  _T_91;
   wire  _GEN_16;
   reg  outputAddressAccepted;
   reg [31:0] _GEN_37;
-  wire [63:0] _T_90;
-  wire  _T_92;
-  wire  _T_94;
-  wire  _T_95;
+  wire [63:0] _T_94;
   wire  _T_96;
-  wire  _T_97;
   wire  _T_98;
-  wire  _GEN_17;
-  wire [511:0] _T_100;
+  wire  _T_99;
+  wire  _T_100;
   wire  _T_101;
+  wire  _T_102;
+  wire  _GEN_17;
+  wire [511:0] _T_106;
+  wire  _T_107;
   wire  _GEN_18;
-  wire  _T_106;
+  wire  _T_114;
   wire [63:0] _GEN_25;
-  wire [64:0] _T_107;
-  wire [63:0] _T_108;
-  wire [64:0] _T_110;
-  wire [63:0] _T_111;
+  wire [64:0] _T_115;
+  wire [63:0] _T_116;
+  wire [64:0] _T_118;
+  wire [63:0] _T_119;
   wire [63:0] _GEN_19;
   wire [63:0] _GEN_20;
   wire  _GEN_21;
@@ -16636,19 +16637,19 @@ module StreamingCore(
   assign io_inputMemAddr = inputMemAddr;
   assign io_inputMemAddrValid = _T_50;
   assign io_inputMemBlockReady = inputAddressAccepted;
-  assign io_outputMemAddr = _T_90;
-  assign io_outputMemAddrValid = _T_97;
-  assign io_outputMemBlock = _T_100;
+  assign io_outputMemAddr = _T_94;
+  assign io_outputMemAddrValid = _T_101;
+  assign io_outputMemBlock = _T_106;
   assign io_outputMemBlockValid = outputAddressAccepted;
   assign io_inputFinished = _T_45;
   assign io_outputFinished = outputLengthCommitted;
   assign core_clock = clock;
   assign core_reset = reset;
   assign core_io_inputMemBlock = io_inputMemBlock;
-  assign core_io_inputMemBlockValid = _T_55;
-  assign core_io_inputBits = _T_60;
+  assign core_io_inputMemBlockValid = _T_57;
+  assign core_io_inputBits = _T_62;
   assign core_io_inputFinished = coreInputFinished;
-  assign core_io_outputMemFlushed = _T_101;
+  assign core_io_outputMemFlushed = _T_107;
   assign _T_42 = inputAddressAccepted == 1'h0;
   assign _T_43 = initDone & core_io_inputMemConsumed;
   assign _T_45 = inputBitsRemaining == 64'h0;
@@ -16657,32 +16658,33 @@ module StreamingCore(
   assign _T_49 = isInit | _T_48;
   assign _T_50 = _T_42 & _T_49;
   assign _T_51 = io_inputMemAddrValid & io_inputMemAddrReady;
+  assign _T_53 = reset == 1'h0;
   assign _GEN_0 = _T_51 ? 1'h1 : inputAddressAccepted;
-  assign inputBlockReadable = _T_54;
-  assign _T_54 = inputAddressAccepted & io_inputMemBlockValid;
-  assign _T_55 = inputBlockReadable & initDone;
-  assign _T_57 = inputBitsRemaining > 64'h200;
-  assign _T_59 = inputBitsRemaining[9:0];
-  assign _T_60 = _T_57 ? 10'h200 : _T_59;
-  assign _T_61 = io_inputMemBlock[63:0];
-  assign _T_62 = io_inputMemBlock[127:64];
-  assign _T_63 = io_inputMemBlock[191:128];
-  assign _T_65 = _T_63 + 64'h40;
-  assign _T_66 = _T_65[63:0];
-  assign _GEN_1 = isInit ? _T_61 : inputMemAddr;
-  assign _GEN_2 = isInit ? _T_62 : inputBitsRemaining;
-  assign _GEN_3 = isInit ? _T_66 : outputMemAddr;
-  assign _GEN_4 = isInit ? _T_63 : outputLenAddr;
+  assign inputBlockReadable = _T_56;
+  assign _T_56 = inputAddressAccepted & io_inputMemBlockValid;
+  assign _T_57 = inputBlockReadable & initDone;
+  assign _T_59 = inputBitsRemaining > 64'h200;
+  assign _T_61 = inputBitsRemaining[9:0];
+  assign _T_62 = _T_59 ? 10'h200 : _T_61;
+  assign _T_65 = io_inputMemBlock[63:0];
+  assign _T_66 = io_inputMemBlock[127:64];
+  assign _T_67 = io_inputMemBlock[191:128];
+  assign _T_69 = _T_67 + 64'h40;
+  assign _T_70 = _T_69[63:0];
+  assign _GEN_1 = isInit ? _T_65 : inputMemAddr;
+  assign _GEN_2 = isInit ? _T_66 : inputBitsRemaining;
+  assign _GEN_3 = isInit ? _T_70 : outputMemAddr;
+  assign _GEN_4 = isInit ? _T_67 : outputLenAddr;
   assign _GEN_5 = isInit ? 1'h0 : isInit;
   assign _GEN_6 = isInit ? 1'h1 : initDone;
-  assign _T_71 = isInit == 1'h0;
-  assign _T_75 = inputBitsRemaining - 64'h200;
-  assign _T_76 = _T_75[63:0];
-  assign _T_78 = _T_57 ? _T_76 : 64'h0;
-  assign _T_80 = inputMemAddr + 64'h40;
-  assign _T_81 = _T_80[63:0];
-  assign _GEN_7 = _T_71 ? _T_78 : _GEN_2;
-  assign _GEN_8 = _T_71 ? _T_81 : _GEN_1;
+  assign _T_75 = isInit == 1'h0;
+  assign _T_79 = inputBitsRemaining - 64'h200;
+  assign _T_80 = _T_79[63:0];
+  assign _T_82 = _T_59 ? _T_80 : 64'h0;
+  assign _T_84 = inputMemAddr + 64'h40;
+  assign _T_85 = _T_84[63:0];
+  assign _GEN_7 = _T_75 ? _T_82 : _GEN_2;
+  assign _GEN_8 = _T_75 ? _T_85 : _GEN_1;
   assign _GEN_9 = inputBlockReadable ? _GEN_8 : inputMemAddr;
   assign _GEN_10 = inputBlockReadable ? _GEN_7 : inputBitsRemaining;
   assign _GEN_11 = inputBlockReadable ? _GEN_3 : outputMemAddr;
@@ -16690,31 +16692,31 @@ module StreamingCore(
   assign _GEN_13 = inputBlockReadable ? _GEN_5 : isInit;
   assign _GEN_14 = inputBlockReadable ? _GEN_6 : initDone;
   assign _GEN_15 = inputBlockReadable ? 1'h0 : _GEN_0;
-  assign _T_87 = core_io_inputMemConsumed & _T_45;
-  assign _GEN_16 = _T_87 ? 1'h1 : coreInputFinished;
-  assign _T_90 = core_io_outputFinished ? outputLenAddr : outputMemAddr;
-  assign _T_92 = outputAddressAccepted == 1'h0;
-  assign _T_94 = outputLengthCommitted == 1'h0;
-  assign _T_95 = core_io_outputFinished & _T_94;
-  assign _T_96 = core_io_outputMemBlockValid | _T_95;
-  assign _T_97 = _T_92 & _T_96;
-  assign _T_98 = io_outputMemAddrValid & io_outputMemAddrReady;
-  assign _GEN_17 = _T_98 ? 1'h1 : outputAddressAccepted;
-  assign _T_100 = core_io_outputFinished ? {{448'd0}, outputBits} : core_io_outputMemBlock;
-  assign _T_101 = outputAddressAccepted & io_outputMemBlockReady;
+  assign _T_91 = core_io_inputMemConsumed & _T_45;
+  assign _GEN_16 = _T_91 ? 1'h1 : coreInputFinished;
+  assign _T_94 = core_io_outputFinished ? outputLenAddr : outputMemAddr;
+  assign _T_96 = outputAddressAccepted == 1'h0;
+  assign _T_98 = outputLengthCommitted == 1'h0;
+  assign _T_99 = core_io_outputFinished & _T_98;
+  assign _T_100 = core_io_outputMemBlockValid | _T_99;
+  assign _T_101 = _T_96 & _T_100;
+  assign _T_102 = io_outputMemAddrValid & io_outputMemAddrReady;
+  assign _GEN_17 = _T_102 ? 1'h1 : outputAddressAccepted;
+  assign _T_106 = core_io_outputFinished ? {{448'd0}, outputBits} : core_io_outputMemBlock;
+  assign _T_107 = outputAddressAccepted & io_outputMemBlockReady;
   assign _GEN_18 = core_io_outputFinished ? 1'h1 : outputLengthCommitted;
-  assign _T_106 = core_io_outputFinished == 1'h0;
+  assign _T_114 = core_io_outputFinished == 1'h0;
   assign _GEN_25 = {{54'd0}, core_io_outputBits};
-  assign _T_107 = outputBits + _GEN_25;
-  assign _T_108 = _T_107[63:0];
-  assign _T_110 = outputMemAddr + 64'h40;
-  assign _T_111 = _T_110[63:0];
-  assign _GEN_19 = _T_106 ? _T_108 : outputBits;
-  assign _GEN_20 = _T_106 ? _T_111 : _GEN_11;
-  assign _GEN_21 = _T_101 ? 1'h0 : _GEN_17;
-  assign _GEN_22 = _T_101 ? _GEN_18 : outputLengthCommitted;
-  assign _GEN_23 = _T_101 ? _GEN_19 : outputBits;
-  assign _GEN_24 = _T_101 ? _GEN_20 : _GEN_11;
+  assign _T_115 = outputBits + _GEN_25;
+  assign _T_116 = _T_115[63:0];
+  assign _T_118 = outputMemAddr + 64'h40;
+  assign _T_119 = _T_118[63:0];
+  assign _GEN_19 = _T_114 ? _T_116 : outputBits;
+  assign _GEN_20 = _T_114 ? _T_119 : _GEN_11;
+  assign _GEN_21 = _T_107 ? 1'h0 : _GEN_17;
+  assign _GEN_22 = _T_107 ? _GEN_18 : outputLengthCommitted;
+  assign _GEN_23 = _T_107 ? _GEN_19 : outputBits;
+  assign _GEN_24 = _T_107 ? _GEN_20 : _GEN_11;
 `ifdef RANDOMIZE
   integer initvar;
   initial begin
@@ -16794,15 +16796,15 @@ module StreamingCore(
       inputBitsRemaining <= 64'h1;
     end else begin
       if (inputBlockReadable) begin
-        if (_T_71) begin
-          if (_T_57) begin
-            inputBitsRemaining <= _T_76;
+        if (_T_75) begin
+          if (_T_59) begin
+            inputBitsRemaining <= _T_80;
           end else begin
             inputBitsRemaining <= 64'h0;
           end
         end else begin
           if (isInit) begin
-            inputBitsRemaining <= _T_62;
+            inputBitsRemaining <= _T_66;
           end
         end
       end
@@ -16810,61 +16812,61 @@ module StreamingCore(
     if (reset) begin
       coreInputFinished <= 1'h0;
     end else begin
-      if (_T_87) begin
+      if (_T_91) begin
         coreInputFinished <= 1'h1;
       end
     end
     if (reset) begin
       outputBits <= 64'h0;
     end else begin
-      if (_T_101) begin
-        if (_T_106) begin
-          outputBits <= _T_108;
+      if (_T_107) begin
+        if (_T_114) begin
+          outputBits <= _T_116;
         end
       end
     end
     if (reset) begin
       outputLengthCommitted <= 1'h0;
     end else begin
-      if (_T_101) begin
+      if (_T_107) begin
         if (core_io_outputFinished) begin
           outputLengthCommitted <= 1'h1;
         end
       end
     end
     if (reset) begin
-      inputMemAddr <= 64'h0;
+      inputMemAddr <= 64'h10000000;
     end else begin
       if (inputBlockReadable) begin
-        if (_T_71) begin
-          inputMemAddr <= _T_81;
+        if (_T_75) begin
+          inputMemAddr <= _T_85;
         end else begin
           if (isInit) begin
-            inputMemAddr <= _T_61;
+            inputMemAddr <= _T_65;
           end
         end
       end
     end
-    if (_T_101) begin
-      if (_T_106) begin
-        outputMemAddr <= _T_111;
+    if (_T_107) begin
+      if (_T_114) begin
+        outputMemAddr <= _T_119;
       end else begin
         if (inputBlockReadable) begin
           if (isInit) begin
-            outputMemAddr <= _T_66;
+            outputMemAddr <= _T_70;
           end
         end
       end
     end else begin
       if (inputBlockReadable) begin
         if (isInit) begin
-          outputMemAddr <= _T_66;
+          outputMemAddr <= _T_70;
         end
       end
     end
     if (inputBlockReadable) begin
       if (isInit) begin
-        outputLenAddr <= _T_63;
+        outputLenAddr <= _T_67;
       end
     end
     if (reset) begin
@@ -16884,14 +16886,499 @@ module StreamingCore(
     if (reset) begin
       outputAddressAccepted <= 1'h0;
     end else begin
-      if (_T_101) begin
+      if (_T_107) begin
         outputAddressAccepted <= 1'h0;
       end else begin
-        if (_T_98) begin
+        if (_T_102) begin
           outputAddressAccepted <= 1'h1;
         end
       end
     end
+    `ifndef SYNTHESIS
+    `ifdef PRINTF_COND
+      if (`PRINTF_COND) begin
+    `endif
+        if (_T_51 & _T_53) begin
+          $fwrite(32'h80000002,"input address 0x%h accepted for core 0\n",io_inputMemAddr);
+        end
+    `ifdef PRINTF_COND
+      end
+    `endif
+    `endif
+    `ifndef SYNTHESIS
+    `ifdef PRINTF_COND
+      if (`PRINTF_COND) begin
+    `endif
+        if (inputBlockReadable & _T_53) begin
+          $fwrite(32'h80000002,"input block 0x%h at address 0x%h accepted for core 0\n",io_inputMemBlock,io_inputMemAddr);
+        end
+    `ifdef PRINTF_COND
+      end
+    `endif
+    `endif
+    `ifndef SYNTHESIS
+    `ifdef PRINTF_COND
+      if (`PRINTF_COND) begin
+    `endif
+        if (_T_102 & _T_53) begin
+          $fwrite(32'h80000002,"output address 0x%h accepted for core 0\n",io_outputMemAddr);
+        end
+    `ifdef PRINTF_COND
+      end
+    `endif
+    `endif
+    `ifndef SYNTHESIS
+    `ifdef PRINTF_COND
+      if (`PRINTF_COND) begin
+    `endif
+        if (_T_107 & _T_53) begin
+          $fwrite(32'h80000002,"output block 0x%h at address 0x%h accepted for core 0\n",io_outputMemBlock,io_outputMemAddr);
+        end
+    `ifdef PRINTF_COND
+      end
+    `endif
+    `endif
+  end
+endmodule
+module StreamingCore_1(
+  input   clock,
+  input   reset,
+  output [63:0] io_inputMemAddr,
+  output  io_inputMemAddrValid,
+  input   io_inputMemAddrReady,
+  input  [511:0] io_inputMemBlock,
+  input   io_inputMemBlockValid,
+  output  io_inputMemBlockReady,
+  output [63:0] io_outputMemAddr,
+  output  io_outputMemAddrValid,
+  input   io_outputMemAddrReady,
+  output [511:0] io_outputMemBlock,
+  output  io_outputMemBlockValid,
+  input   io_outputMemBlockReady,
+  output  io_inputFinished,
+  output  io_outputFinished
+);
+  wire  core_clock;
+  wire  core_reset;
+  wire [511:0] core_io_inputMemBlock;
+  wire  core_io_inputMemBlockValid;
+  wire [9:0] core_io_inputBits;
+  wire  core_io_inputMemConsumed;
+  wire  core_io_inputFinished;
+  wire [511:0] core_io_outputMemBlock;
+  wire  core_io_outputMemBlockValid;
+  wire [9:0] core_io_outputBits;
+  wire  core_io_outputFinished;
+  wire  core_io_outputMemFlushed;
+  reg  isInit;
+  reg [31:0] _GEN_26;
+  reg  initDone;
+  reg [31:0] _GEN_27;
+  reg [63:0] inputBitsRemaining;
+  reg [63:0] _GEN_28;
+  reg  coreInputFinished;
+  reg [31:0] _GEN_29;
+  reg [63:0] outputBits;
+  reg [63:0] _GEN_30;
+  reg  outputLengthCommitted;
+  reg [31:0] _GEN_31;
+  reg [63:0] inputMemAddr;
+  reg [63:0] _GEN_32;
+  reg [63:0] outputMemAddr;
+  reg [63:0] _GEN_33;
+  reg [63:0] outputLenAddr;
+  reg [63:0] _GEN_34;
+  reg  outputMemFlushed;
+  reg [31:0] _GEN_35;
+  reg  inputAddressAccepted;
+  reg [31:0] _GEN_36;
+  wire  _T_42;
+  wire  _T_43;
+  wire  _T_45;
+  wire  _T_47;
+  wire  _T_48;
+  wire  _T_49;
+  wire  _T_50;
+  wire  _T_51;
+  wire  _T_53;
+  wire  _GEN_0;
+  wire  inputBlockReadable;
+  wire  _T_56;
+  wire  _T_57;
+  wire  _T_59;
+  wire [9:0] _T_61;
+  wire [9:0] _T_62;
+  wire [63:0] _T_65;
+  wire [63:0] _T_66;
+  wire [63:0] _T_67;
+  wire [64:0] _T_69;
+  wire [63:0] _T_70;
+  wire [63:0] _GEN_1;
+  wire [63:0] _GEN_2;
+  wire [63:0] _GEN_3;
+  wire [63:0] _GEN_4;
+  wire  _GEN_5;
+  wire  _GEN_6;
+  wire  _T_75;
+  wire [64:0] _T_79;
+  wire [63:0] _T_80;
+  wire [63:0] _T_82;
+  wire [64:0] _T_84;
+  wire [63:0] _T_85;
+  wire [63:0] _GEN_7;
+  wire [63:0] _GEN_8;
+  wire [63:0] _GEN_9;
+  wire [63:0] _GEN_10;
+  wire [63:0] _GEN_11;
+  wire [63:0] _GEN_12;
+  wire  _GEN_13;
+  wire  _GEN_14;
+  wire  _GEN_15;
+  wire  _T_91;
+  wire  _GEN_16;
+  reg  outputAddressAccepted;
+  reg [31:0] _GEN_37;
+  wire [63:0] _T_94;
+  wire  _T_96;
+  wire  _T_98;
+  wire  _T_99;
+  wire  _T_100;
+  wire  _T_101;
+  wire  _T_102;
+  wire  _GEN_17;
+  wire [511:0] _T_106;
+  wire  _T_107;
+  wire  _GEN_18;
+  wire  _T_114;
+  wire [63:0] _GEN_25;
+  wire [64:0] _T_115;
+  wire [63:0] _T_116;
+  wire [64:0] _T_118;
+  wire [63:0] _T_119;
+  wire [63:0] _GEN_19;
+  wire [63:0] _GEN_20;
+  wire  _GEN_21;
+  wire  _GEN_22;
+  wire [63:0] _GEN_23;
+  wire [63:0] _GEN_24;
+  PassThrough core (
+    .clock(core_clock),
+    .reset(core_reset),
+    .io_inputMemBlock(core_io_inputMemBlock),
+    .io_inputMemBlockValid(core_io_inputMemBlockValid),
+    .io_inputBits(core_io_inputBits),
+    .io_inputMemConsumed(core_io_inputMemConsumed),
+    .io_inputFinished(core_io_inputFinished),
+    .io_outputMemBlock(core_io_outputMemBlock),
+    .io_outputMemBlockValid(core_io_outputMemBlockValid),
+    .io_outputBits(core_io_outputBits),
+    .io_outputFinished(core_io_outputFinished),
+    .io_outputMemFlushed(core_io_outputMemFlushed)
+  );
+  assign io_inputMemAddr = inputMemAddr;
+  assign io_inputMemAddrValid = _T_50;
+  assign io_inputMemBlockReady = inputAddressAccepted;
+  assign io_outputMemAddr = _T_94;
+  assign io_outputMemAddrValid = _T_101;
+  assign io_outputMemBlock = _T_106;
+  assign io_outputMemBlockValid = outputAddressAccepted;
+  assign io_inputFinished = _T_45;
+  assign io_outputFinished = outputLengthCommitted;
+  assign core_clock = clock;
+  assign core_reset = reset;
+  assign core_io_inputMemBlock = io_inputMemBlock;
+  assign core_io_inputMemBlockValid = _T_57;
+  assign core_io_inputBits = _T_62;
+  assign core_io_inputFinished = coreInputFinished;
+  assign core_io_outputMemFlushed = _T_107;
+  assign _T_42 = inputAddressAccepted == 1'h0;
+  assign _T_43 = initDone & core_io_inputMemConsumed;
+  assign _T_45 = inputBitsRemaining == 64'h0;
+  assign _T_47 = _T_45 == 1'h0;
+  assign _T_48 = _T_43 & _T_47;
+  assign _T_49 = isInit | _T_48;
+  assign _T_50 = _T_42 & _T_49;
+  assign _T_51 = io_inputMemAddrValid & io_inputMemAddrReady;
+  assign _T_53 = reset == 1'h0;
+  assign _GEN_0 = _T_51 ? 1'h1 : inputAddressAccepted;
+  assign inputBlockReadable = _T_56;
+  assign _T_56 = inputAddressAccepted & io_inputMemBlockValid;
+  assign _T_57 = inputBlockReadable & initDone;
+  assign _T_59 = inputBitsRemaining > 64'h200;
+  assign _T_61 = inputBitsRemaining[9:0];
+  assign _T_62 = _T_59 ? 10'h200 : _T_61;
+  assign _T_65 = io_inputMemBlock[63:0];
+  assign _T_66 = io_inputMemBlock[127:64];
+  assign _T_67 = io_inputMemBlock[191:128];
+  assign _T_69 = _T_67 + 64'h40;
+  assign _T_70 = _T_69[63:0];
+  assign _GEN_1 = isInit ? _T_65 : inputMemAddr;
+  assign _GEN_2 = isInit ? _T_66 : inputBitsRemaining;
+  assign _GEN_3 = isInit ? _T_70 : outputMemAddr;
+  assign _GEN_4 = isInit ? _T_67 : outputLenAddr;
+  assign _GEN_5 = isInit ? 1'h0 : isInit;
+  assign _GEN_6 = isInit ? 1'h1 : initDone;
+  assign _T_75 = isInit == 1'h0;
+  assign _T_79 = inputBitsRemaining - 64'h200;
+  assign _T_80 = _T_79[63:0];
+  assign _T_82 = _T_59 ? _T_80 : 64'h0;
+  assign _T_84 = inputMemAddr + 64'h40;
+  assign _T_85 = _T_84[63:0];
+  assign _GEN_7 = _T_75 ? _T_82 : _GEN_2;
+  assign _GEN_8 = _T_75 ? _T_85 : _GEN_1;
+  assign _GEN_9 = inputBlockReadable ? _GEN_8 : inputMemAddr;
+  assign _GEN_10 = inputBlockReadable ? _GEN_7 : inputBitsRemaining;
+  assign _GEN_11 = inputBlockReadable ? _GEN_3 : outputMemAddr;
+  assign _GEN_12 = inputBlockReadable ? _GEN_4 : outputLenAddr;
+  assign _GEN_13 = inputBlockReadable ? _GEN_5 : isInit;
+  assign _GEN_14 = inputBlockReadable ? _GEN_6 : initDone;
+  assign _GEN_15 = inputBlockReadable ? 1'h0 : _GEN_0;
+  assign _T_91 = core_io_inputMemConsumed & _T_45;
+  assign _GEN_16 = _T_91 ? 1'h1 : coreInputFinished;
+  assign _T_94 = core_io_outputFinished ? outputLenAddr : outputMemAddr;
+  assign _T_96 = outputAddressAccepted == 1'h0;
+  assign _T_98 = outputLengthCommitted == 1'h0;
+  assign _T_99 = core_io_outputFinished & _T_98;
+  assign _T_100 = core_io_outputMemBlockValid | _T_99;
+  assign _T_101 = _T_96 & _T_100;
+  assign _T_102 = io_outputMemAddrValid & io_outputMemAddrReady;
+  assign _GEN_17 = _T_102 ? 1'h1 : outputAddressAccepted;
+  assign _T_106 = core_io_outputFinished ? {{448'd0}, outputBits} : core_io_outputMemBlock;
+  assign _T_107 = outputAddressAccepted & io_outputMemBlockReady;
+  assign _GEN_18 = core_io_outputFinished ? 1'h1 : outputLengthCommitted;
+  assign _T_114 = core_io_outputFinished == 1'h0;
+  assign _GEN_25 = {{54'd0}, core_io_outputBits};
+  assign _T_115 = outputBits + _GEN_25;
+  assign _T_116 = _T_115[63:0];
+  assign _T_118 = outputMemAddr + 64'h40;
+  assign _T_119 = _T_118[63:0];
+  assign _GEN_19 = _T_114 ? _T_116 : outputBits;
+  assign _GEN_20 = _T_114 ? _T_119 : _GEN_11;
+  assign _GEN_21 = _T_107 ? 1'h0 : _GEN_17;
+  assign _GEN_22 = _T_107 ? _GEN_18 : outputLengthCommitted;
+  assign _GEN_23 = _T_107 ? _GEN_19 : outputBits;
+  assign _GEN_24 = _T_107 ? _GEN_20 : _GEN_11;
+`ifdef RANDOMIZE
+  integer initvar;
+  initial begin
+    `ifndef verilator
+      #0.002 begin end
+    `endif
+  `ifdef RANDOMIZE_REG_INIT
+  _GEN_26 = {1{$random}};
+  isInit = _GEN_26[0:0];
+  `endif
+  `ifdef RANDOMIZE_REG_INIT
+  _GEN_27 = {1{$random}};
+  initDone = _GEN_27[0:0];
+  `endif
+  `ifdef RANDOMIZE_REG_INIT
+  _GEN_28 = {2{$random}};
+  inputBitsRemaining = _GEN_28[63:0];
+  `endif
+  `ifdef RANDOMIZE_REG_INIT
+  _GEN_29 = {1{$random}};
+  coreInputFinished = _GEN_29[0:0];
+  `endif
+  `ifdef RANDOMIZE_REG_INIT
+  _GEN_30 = {2{$random}};
+  outputBits = _GEN_30[63:0];
+  `endif
+  `ifdef RANDOMIZE_REG_INIT
+  _GEN_31 = {1{$random}};
+  outputLengthCommitted = _GEN_31[0:0];
+  `endif
+  `ifdef RANDOMIZE_REG_INIT
+  _GEN_32 = {2{$random}};
+  inputMemAddr = _GEN_32[63:0];
+  `endif
+  `ifdef RANDOMIZE_REG_INIT
+  _GEN_33 = {2{$random}};
+  outputMemAddr = _GEN_33[63:0];
+  `endif
+  `ifdef RANDOMIZE_REG_INIT
+  _GEN_34 = {2{$random}};
+  outputLenAddr = _GEN_34[63:0];
+  `endif
+  `ifdef RANDOMIZE_REG_INIT
+  _GEN_35 = {1{$random}};
+  outputMemFlushed = _GEN_35[0:0];
+  `endif
+  `ifdef RANDOMIZE_REG_INIT
+  _GEN_36 = {1{$random}};
+  inputAddressAccepted = _GEN_36[0:0];
+  `endif
+  `ifdef RANDOMIZE_REG_INIT
+  _GEN_37 = {1{$random}};
+  outputAddressAccepted = _GEN_37[0:0];
+  `endif
+  end
+`endif
+  always @(posedge clock) begin
+    if (reset) begin
+      isInit <= 1'h1;
+    end else begin
+      if (inputBlockReadable) begin
+        if (isInit) begin
+          isInit <= 1'h0;
+        end
+      end
+    end
+    if (reset) begin
+      initDone <= 1'h0;
+    end else begin
+      if (inputBlockReadable) begin
+        if (isInit) begin
+          initDone <= 1'h1;
+        end
+      end
+    end
+    if (reset) begin
+      inputBitsRemaining <= 64'h1;
+    end else begin
+      if (inputBlockReadable) begin
+        if (_T_75) begin
+          if (_T_59) begin
+            inputBitsRemaining <= _T_80;
+          end else begin
+            inputBitsRemaining <= 64'h0;
+          end
+        end else begin
+          if (isInit) begin
+            inputBitsRemaining <= _T_66;
+          end
+        end
+      end
+    end
+    if (reset) begin
+      coreInputFinished <= 1'h0;
+    end else begin
+      if (_T_91) begin
+        coreInputFinished <= 1'h1;
+      end
+    end
+    if (reset) begin
+      outputBits <= 64'h0;
+    end else begin
+      if (_T_107) begin
+        if (_T_114) begin
+          outputBits <= _T_116;
+        end
+      end
+    end
+    if (reset) begin
+      outputLengthCommitted <= 1'h0;
+    end else begin
+      if (_T_107) begin
+        if (core_io_outputFinished) begin
+          outputLengthCommitted <= 1'h1;
+        end
+      end
+    end
+    if (reset) begin
+      inputMemAddr <= 64'h10000000;
+    end else begin
+      if (inputBlockReadable) begin
+        if (_T_75) begin
+          inputMemAddr <= _T_85;
+        end else begin
+          if (isInit) begin
+            inputMemAddr <= _T_65;
+          end
+        end
+      end
+    end
+    if (_T_107) begin
+      if (_T_114) begin
+        outputMemAddr <= _T_119;
+      end else begin
+        if (inputBlockReadable) begin
+          if (isInit) begin
+            outputMemAddr <= _T_70;
+          end
+        end
+      end
+    end else begin
+      if (inputBlockReadable) begin
+        if (isInit) begin
+          outputMemAddr <= _T_70;
+        end
+      end
+    end
+    if (inputBlockReadable) begin
+      if (isInit) begin
+        outputLenAddr <= _T_67;
+      end
+    end
+    if (reset) begin
+      outputMemFlushed <= 1'h0;
+    end
+    if (reset) begin
+      inputAddressAccepted <= 1'h0;
+    end else begin
+      if (inputBlockReadable) begin
+        inputAddressAccepted <= 1'h0;
+      end else begin
+        if (_T_51) begin
+          inputAddressAccepted <= 1'h1;
+        end
+      end
+    end
+    if (reset) begin
+      outputAddressAccepted <= 1'h0;
+    end else begin
+      if (_T_107) begin
+        outputAddressAccepted <= 1'h0;
+      end else begin
+        if (_T_102) begin
+          outputAddressAccepted <= 1'h1;
+        end
+      end
+    end
+    `ifndef SYNTHESIS
+    `ifdef PRINTF_COND
+      if (`PRINTF_COND) begin
+    `endif
+        if (_T_51 & _T_53) begin
+          $fwrite(32'h80000002,"input address 0x%h accepted for core 1\n",io_inputMemAddr);
+        end
+    `ifdef PRINTF_COND
+      end
+    `endif
+    `endif
+    `ifndef SYNTHESIS
+    `ifdef PRINTF_COND
+      if (`PRINTF_COND) begin
+    `endif
+        if (inputBlockReadable & _T_53) begin
+          $fwrite(32'h80000002,"input block 0x%h at address 0x%h accepted for core 1\n",io_inputMemBlock,io_inputMemAddr);
+        end
+    `ifdef PRINTF_COND
+      end
+    `endif
+    `endif
+    `ifndef SYNTHESIS
+    `ifdef PRINTF_COND
+      if (`PRINTF_COND) begin
+    `endif
+        if (_T_102 & _T_53) begin
+          $fwrite(32'h80000002,"output address 0x%h accepted for core 1\n",io_outputMemAddr);
+        end
+    `ifdef PRINTF_COND
+      end
+    `endif
+    `endif
+    `ifndef SYNTHESIS
+    `ifdef PRINTF_COND
+      if (`PRINTF_COND) begin
+    `endif
+        if (_T_107 & _T_53) begin
+          $fwrite(32'h80000002,"output block 0x%h at address 0x%h accepted for core 1\n",io_outputMemBlock,io_outputMemAddr);
+        end
+    `ifdef PRINTF_COND
+      end
+    `endif
+    `endif
   end
 endmodule
 module StreamingWrapper(
@@ -17466,7 +17953,7 @@ module StreamingWrapper(
     .io_inputFinished(StreamingCore_io_inputFinished),
     .io_outputFinished(StreamingCore_io_outputFinished)
   );
-  StreamingCore StreamingCore_1 (
+  StreamingCore_1 StreamingCore_1 (
     .clock(StreamingCore_1_clock),
     .reset(StreamingCore_1_reset),
     .io_inputMemAddr(StreamingCore_1_io_inputMemAddr),
