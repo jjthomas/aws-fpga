@@ -1,0 +1,6 @@
+[centos@ip-172-31-63-154 build]$ aws ec2 create-fpga-image --region us-east-1 --name bad_wns_50_core --input-storage-location Bucket=fpga-dcp,Key=dcp/17_09_08-060834.Developer_CL.tar --logs-storage-location Bucket=fpga-dcp,Key=logs
+{
+    "FpgaImageId": "afi-07b046d414a672b27", 
+    "FpgaImageGlobalId": "agfi-0d7757aa2b8b448dd"
+}
+
