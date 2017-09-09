@@ -189,10 +189,16 @@ int dma_example(int slot_id) {
     fsync(fd);
 
     pci_bar_handle_t pci_bar_handle = PCI_BAR_HANDLE_INIT;
-    fpga_pci_poke(pci_bar_handle, 0x500, 1);
+    rc = fpga_pci_poke(pci_bar_handle, 0x500, 1);
+    if (rc < 0) {
+      fail_on((rc = (rc < 0)? errno:0), out, "call to fpga_pci_poke failed.");
+    }
     uint32_t reg_peek;
     do {
-      fpga_pci_peek(pci_bar_handle, 0x500, &reg_peek);
+      rc = fpga_pci_peek(pci_bar_handle, 0x500, &reg_peek);
+      if (rc < 0) {
+        fail_on((rc = (rc < 0)? errno:0), out, "call to fpga_pci_peek failed.");
+      }
       usleep(10000);
     } while (reg_peek != 0);
 
