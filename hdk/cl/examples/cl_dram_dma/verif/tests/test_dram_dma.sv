@@ -120,8 +120,8 @@ module test_dram_dma();
           tb.peek_ocl(.addr(64'h500), .data(streaming_active));
           #10ns;
           timeout_count++;
-       end while ((streaming_active != 32'h0) && (timeout_count < 10000));
-       if (timeout_count >= 10000) begin
+       end while ((streaming_active != 32'h0) && (timeout_count < 1000));
+       if (timeout_count >= 1000) begin
           $display("[%t] : *** ERROR *** Timeout waiting for streaming to complete", $realtime);
           error_count++;
        end
