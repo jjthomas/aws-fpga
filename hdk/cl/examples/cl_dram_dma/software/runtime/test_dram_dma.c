@@ -109,7 +109,9 @@ int dma_example(int slot_id) {
     int fd, rc;
     char device_file_name[256];
     char *write_buffer, *read_buffer, *expected_read_buffer;
-    static const size_t buffer_size = 128 * 25;
+    static const int num_cores = 2;
+    static const int mem_offset = 0x10000000;
+    const size_t buffer_size = 128 * (num_cores / 2);
     int channel=0;
 
     read_buffer = NULL;
@@ -146,19 +148,22 @@ int dma_example(int slot_id) {
     }
 
     cache_line *cl_wb = (cache_line *)write_buffer; 
-    cache_line *cl_rb = (cache_line *)write_buffer; 
-    for (int i = 0; i < 25; i++) { 
-      cl_wb[i].data[0] = 64 * (25 + i);
+    cache_line *cl_rb = (cache_line *)expected_read_buffer; 
+    for (int i = 0; i < num_cores/2; i++) { 
+      cl_wb[i].data[0] = mem_offset + 64 * (num_cores/2 + i);
       cl_wb[i].data[1] = 512;
-      cl_wb[i].data[2] = 128 * i;
+      cl_wb[i].data[2] = mem_offset + 128 * i;
 
       cl_rb[i * 2].data[0] = 512;
+      for (int j = 1; j < 8; j++) {
+        cl_rb[i * 2].data[j] = 0;
+      }
     }
-    for (int i = 25; i < 50; i++) { 
+    for (int i = num_cores/2; i < num_cores; i++) { 
       for (int j = 0; j < 8; j++) {
         cl_wb[i].data[j] = i + j;
 
-        cl_rb[(i - 25) * 2 + 1].data[j] = i + j;
+        cl_rb[(i - num_cores/2) * 2 + 1].data[j] = i + j;
       }
     }
 
@@ -173,7 +178,7 @@ int dma_example(int slot_id) {
             rc = pwrite(fd,
                 write_buffer + write_offset,
                 buffer_size - write_offset,
-                channel*MEM_16G + write_offset);
+                mem_offset + channel*MEM_16G + write_offset);
             if (rc < 0) {
                 fail_on((rc = (rc < 0)? errno:0), out, "call to pwrite failed.");
             }
@@ -189,6 +194,8 @@ int dma_example(int slot_id) {
     fsync(fd);
 
     pci_bar_handle_t pci_bar_handle = PCI_BAR_HANDLE_INIT;
+    rc = fpga_pci_attach(0, 0, 0, 0, &pci_bar_handle);
+    fail_on(rc, out, "Unable to attach to the AFI on slot id %d", 0);
     rc = fpga_pci_poke(pci_bar_handle, 0x500, 1);
     if (rc < 0) {
       fail_on((rc = (rc < 0)? errno:0), out, "call to fpga_pci_poke failed.");
@@ -215,7 +222,7 @@ int dma_example(int slot_id) {
             rc = pread(fd,
                 read_buffer + read_offset,
                 buffer_size - read_offset,
-                channel*MEM_16G + read_offset);
+                mem_offset + channel*MEM_16G + read_offset);
             if (rc < 0) {
                 fail_on((rc = (rc < 0)? errno:0), out, "call to pread failed.");
             }
