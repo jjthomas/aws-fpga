@@ -428,7 +428,7 @@ lib_pipe #(.WIDTH(1+8+32), .STAGES(NUM_CFG_STGS_CL_DDR_ATG)) PIPE_DDR_STAT_ACK2 
 
 
 
-// TODO add register bank for these signals
+// ssh_ddr attached signals
 logic[63:0] sw_cl_sh_ddra_araddr;
 logic sw_cl_sh_ddra_arvalid;
 logic sw_cl_sh_ddra_arready;
@@ -457,6 +457,107 @@ logic[511:0] sw_cl_sh_ddrd_wdata;
 logic sw_cl_sh_ddrd_wvalid;
 logic sw_cl_sh_ddrd_wready;
 
+// streaming_wrapper attached signals
+logic[63:0] sw_cl_sh_ddra_araddr_q;
+logic sw_cl_sh_ddra_arvalid_q;
+logic sw_cl_sh_ddra_arready_q;
+logic[511:0] sw_cl_sh_ddra_rdata_q;
+logic sw_cl_sh_ddra_rvalid_q;
+logic sw_cl_sh_ddra_rready_q;
+
+logic[63:0] sw_cl_sh_ddrb_araddr_q;
+logic sw_cl_sh_ddrb_arvalid_q;
+logic sw_cl_sh_ddrb_arready_q;
+logic[511:0] sw_cl_sh_ddrb_rdata_q;
+logic sw_cl_sh_ddrb_rvalid_q;
+logic sw_cl_sh_ddrb_rready_q;
+
+logic[63:0] sw_cl_sh_ddrc_awaddr_q;
+logic sw_cl_sh_ddrc_awvalid_q;
+logic sw_cl_sh_ddrc_awready_q;
+logic[511:0] sw_cl_sh_ddrc_wdata_q;
+logic sw_cl_sh_ddrc_wvalid_q;
+logic sw_cl_sh_ddrc_wready_q;
+
+logic[63:0] sw_cl_sh_ddrd_awaddr_q;
+logic sw_cl_sh_ddrd_awvalid_q;
+logic sw_cl_sh_ddrd_awready_q;
+logic[511:0] sw_cl_sh_ddrd_wdata_q;
+logic sw_cl_sh_ddrd_wvalid_q;
+logic sw_cl_sh_ddrd_wready_q;
+
+axi_register_slice DDRA_SW_SLC (
+    .aclk          (clk),
+    .aresetn       (sync_rst_n),
+    .m_axi_araddr  (sw_cl_sh_ddra_araddr),
+    .m_axi_arvalid (sw_cl_sh_ddra_arvalid),
+    .m_axi_arready (sw_cl_sh_ddra_arready),
+    .m_axi_rdata   (sw_cl_sh_ddra_rdata),
+    .m_axi_rvalid  (sw_cl_sh_ddra_rvalid),
+    .m_axi_rready  (sw_cl_sh_ddra_rready),
+
+    .s_axi_araddr  (sw_cl_sh_ddra_araddr_q),
+    .s_axi_arvalid (sw_cl_sh_ddra_arvalid_q),
+    .s_axi_arready (sw_cl_sh_ddra_arready_q),
+    .s_axi_rdata   (sw_cl_sh_ddra_rdata_q),
+    .s_axi_rvalid  (sw_cl_sh_ddra_rvalid_q),
+    .s_axi_rready  (sw_cl_sh_ddra_rready_q)
+);
+
+axi_register_slice DDRB_SW_SLC (
+    .aclk          (clk),
+    .aresetn       (sync_rst_n),
+    .m_axi_araddr  (sw_cl_sh_ddrb_araddr),
+    .m_axi_arvalid (sw_cl_sh_ddrb_arvalid),
+    .m_axi_arready (sw_cl_sh_ddrb_arready),
+    .m_axi_rdata   (sw_cl_sh_ddrb_rdata),
+    .m_axi_rvalid  (sw_cl_sh_ddrb_rvalid),
+    .m_axi_rready  (sw_cl_sh_ddrb_rready),
+
+    .s_axi_araddr  (sw_cl_sh_ddrb_araddr_q),
+    .s_axi_arvalid (sw_cl_sh_ddrb_arvalid_q),
+    .s_axi_arready (sw_cl_sh_ddrb_arready_q),
+    .s_axi_rdata   (sw_cl_sh_ddrb_rdata_q),
+    .s_axi_rvalid  (sw_cl_sh_ddrb_rvalid_q),
+    .s_axi_rready  (sw_cl_sh_ddrb_rready_q)
+);
+
+axi_register_slice DDRC_SW_SLC (
+    .aclk          (clk),
+    .aresetn       (sync_rst_n),
+    .m_axi_awaddr  (sw_cl_sh_ddrc_awaddr),
+    .m_axi_awvalid (sw_cl_sh_ddrc_awvalid),
+    .m_axi_awready (sw_cl_sh_ddrc_awready),
+    .m_axi_wdata   (sw_cl_sh_ddrc_wdata),
+    .m_axi_wvalid  (sw_cl_sh_ddrc_wvalid),
+    .m_axi_wready  (sw_cl_sh_ddrc_wready),
+
+    .s_axi_awaddr  (sw_cl_sh_ddrc_awaddr_q),
+    .s_axi_awvalid (sw_cl_sh_ddrc_awvalid_q),
+    .s_axi_awready (sw_cl_sh_ddrc_awready_q),
+    .s_axi_wdata   (sw_cl_sh_ddrc_wdata_q),
+    .s_axi_wvalid  (sw_cl_sh_ddrc_wvalid_q),
+    .s_axi_wready  (sw_cl_sh_ddrc_wready_q)
+);
+
+axi_register_slice DDRD_SW_SLC (
+    .aclk          (clk),
+    .aresetn       (sync_rst_n),
+    .m_axi_awaddr  (sw_cl_sh_ddrd_awaddr),
+    .m_axi_awvalid (sw_cl_sh_ddrd_awvalid),
+    .m_axi_awready (sw_cl_sh_ddrd_awready),
+    .m_axi_wdata   (sw_cl_sh_ddrd_wdata),
+    .m_axi_wvalid  (sw_cl_sh_ddrd_wvalid),
+    .m_axi_wready  (sw_cl_sh_ddrd_wready),
+
+    .s_axi_awaddr  (sw_cl_sh_ddrd_awaddr_q),
+    .s_axi_awvalid (sw_cl_sh_ddrd_awvalid_q),
+    .s_axi_awready (sw_cl_sh_ddrd_awready_q),
+    .s_axi_wdata   (sw_cl_sh_ddrd_wdata_q),
+    .s_axi_wvalid  (sw_cl_sh_ddrd_wvalid_q),
+    .s_axi_wready  (sw_cl_sh_ddrd_wready_q)
+);
+
 
 always_ff @(negedge sync_rst_n or posedge clk)
   if (!sync_rst_n) begin
@@ -480,30 +581,30 @@ always_ff @(negedge sync_rst_n or posedge clk)
 StreamingWrapper streaming_wrapper(
   .clock(clk),
   .reset(sw_reset),
-  .io_inputMemAddrs_0(sw_cl_sh_ddra_araddr),
-  .io_inputMemAddrs_1(sw_cl_sh_ddrb_araddr),
-  .io_inputMemAddrValids_0(sw_cl_sh_ddra_arvalid),
-  .io_inputMemAddrValids_1(sw_cl_sh_ddrb_arvalid),
-  .io_inputMemAddrReadys_0(sw_cl_sh_ddra_arready),
-  .io_inputMemAddrReadys_1(sw_cl_sh_ddrb_arready),
-  .io_inputMemBlocks_0(sw_cl_sh_ddra_rdata),
-  .io_inputMemBlocks_1(sw_cl_sh_ddrb_rdata),
-  .io_inputMemBlockValids_0(sw_cl_sh_ddra_rvalid),
-  .io_inputMemBlockValids_1(sw_cl_sh_ddrb_rvalid),
-  .io_inputMemBlockReadys_0(sw_cl_sh_ddra_rready),
-  .io_inputMemBlockReadys_1(sw_cl_sh_ddrb_rready),
-  .io_outputMemAddrs_0(sw_cl_sh_ddrc_awaddr),
-  .io_outputMemAddrs_1(sw_cl_sh_ddrd_awaddr),
-  .io_outputMemAddrValids_0(sw_cl_sh_ddrc_awvalid),
-  .io_outputMemAddrValids_1(sw_cl_sh_ddrd_awvalid),
-  .io_outputMemAddrReadys_0(sw_cl_sh_ddrc_awready),
-  .io_outputMemAddrReadys_1(sw_cl_sh_ddrd_awready),
-  .io_outputMemBlocks_0(sw_cl_sh_ddrc_wdata),
-  .io_outputMemBlocks_1(sw_cl_sh_ddrd_wdata),
-  .io_outputMemBlockValids_0(sw_cl_sh_ddrc_wvalid),
-  .io_outputMemBlockValids_1(sw_cl_sh_ddrd_wvalid),
-  .io_outputMemBlockReadys_0(sw_cl_sh_ddrc_wready),
-  .io_outputMemBlockReadys_1(sw_cl_sh_ddrd_wready),
+  .io_inputMemAddrs_0(sw_cl_sh_ddra_araddr_q),
+  .io_inputMemAddrs_1(sw_cl_sh_ddrb_araddr_q),
+  .io_inputMemAddrValids_0(sw_cl_sh_ddra_arvalid_q),
+  .io_inputMemAddrValids_1(sw_cl_sh_ddrb_arvalid_q),
+  .io_inputMemAddrReadys_0(sw_cl_sh_ddra_arready_q),
+  .io_inputMemAddrReadys_1(sw_cl_sh_ddrb_arready_q),
+  .io_inputMemBlocks_0(sw_cl_sh_ddra_rdata_q),
+  .io_inputMemBlocks_1(sw_cl_sh_ddrb_rdata_q),
+  .io_inputMemBlockValids_0(sw_cl_sh_ddra_rvalid_q),
+  .io_inputMemBlockValids_1(sw_cl_sh_ddrb_rvalid_q),
+  .io_inputMemBlockReadys_0(sw_cl_sh_ddra_rready_q),
+  .io_inputMemBlockReadys_1(sw_cl_sh_ddrb_rready_q),
+  .io_outputMemAddrs_0(sw_cl_sh_ddrc_awaddr_q),
+  .io_outputMemAddrs_1(sw_cl_sh_ddrd_awaddr_q),
+  .io_outputMemAddrValids_0(sw_cl_sh_ddrc_awvalid_q),
+  .io_outputMemAddrValids_1(sw_cl_sh_ddrd_awvalid_q),
+  .io_outputMemAddrReadys_0(sw_cl_sh_ddrc_awready_q),
+  .io_outputMemAddrReadys_1(sw_cl_sh_ddrd_awready_q),
+  .io_outputMemBlocks_0(sw_cl_sh_ddrc_wdata_q),
+  .io_outputMemBlocks_1(sw_cl_sh_ddrd_wdata_q),
+  .io_outputMemBlockValids_0(sw_cl_sh_ddrc_wvalid_q),
+  .io_outputMemBlockValids_1(sw_cl_sh_ddrd_wvalid_q),
+  .io_outputMemBlockReadys_0(sw_cl_sh_ddrc_wready_q),
+  .io_outputMemBlockReadys_1(sw_cl_sh_ddrd_wready_q),
   .io_finished(sw_finished)
 );
 
