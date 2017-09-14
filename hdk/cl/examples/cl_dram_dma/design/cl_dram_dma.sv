@@ -332,9 +332,11 @@ cl_pcim_mstr CL_PCIM_MSTR (
 ///////////////////////////////////////////////////////////////////////
 
 logic sw_finished;
+logic sw_finished_latched;
 logic streaming_active;
 logic sw_reset;
 logic sw_reset_done;
+logic sw_reset_done_int;
 
 assign sh_ocl_bus.awvalid = sh_ocl_awvalid;
 assign sh_ocl_bus.awaddr[31:0] = sh_ocl_awaddr;
@@ -362,7 +364,7 @@ cl_ocl_slv CL_OCL_SLV (
    .sync_rst_n(ocl_slv_sync_rst_n),
 
    .sh_cl_flr_assert_q(sh_cl_flr_assert_q),
-   .set_streaming_finished(sw_finished && sw_reset_done),
+   .set_streaming_finished(sw_finished_latched && sw_reset_done),
    .streaming_active(streaming_active),
 
    .sh_ocl_bus  (sh_ocl_bus),
@@ -427,6 +429,39 @@ lib_pipe #(.WIDTH(1+8+32), .STAGES(NUM_CFG_STGS_CL_DDR_ATG)) PIPE_DDR_STAT_ACK2 
                                                ); 
 
 
+//convert to 2D 
+logic[15:0] cl_sh_ddr_awid_2d[2:0];
+logic[63:0] cl_sh_ddr_awaddr_2d[2:0];
+logic[7:0] cl_sh_ddr_awlen_2d[2:0];
+logic[2:0] cl_sh_ddr_awsize_2d[2:0];
+logic cl_sh_ddr_awvalid_2d [2:0];
+logic[2:0] sh_cl_ddr_awready_2d;
+
+logic[15:0] cl_sh_ddr_wid_2d[2:0];
+logic[511:0] cl_sh_ddr_wdata_2d[2:0];
+logic[63:0] cl_sh_ddr_wstrb_2d[2:0];
+logic[2:0] cl_sh_ddr_wlast_2d;
+logic[2:0] cl_sh_ddr_wvalid_2d;
+logic[2:0] sh_cl_ddr_wready_2d;
+
+logic[15:0] sh_cl_ddr_bid_2d[2:0];
+logic[1:0] sh_cl_ddr_bresp_2d[2:0];
+logic[2:0] sh_cl_ddr_bvalid_2d;
+logic[2:0] cl_sh_ddr_bready_2d;
+
+logic[15:0] cl_sh_ddr_arid_2d[2:0];
+logic[63:0] cl_sh_ddr_araddr_2d[2:0];
+logic[7:0] cl_sh_ddr_arlen_2d[2:0];
+logic[2:0] cl_sh_ddr_arsize_2d[2:0];
+logic[2:0] cl_sh_ddr_arvalid_2d;
+logic[2:0] sh_cl_ddr_arready_2d;
+
+logic[15:0] sh_cl_ddr_rid_2d[2:0];
+logic[511:0] sh_cl_ddr_rdata_2d[2:0];
+logic[1:0] sh_cl_ddr_rresp_2d[2:0];
+logic[2:0] sh_cl_ddr_rlast_2d;
+logic[2:0] sh_cl_ddr_rvalid_2d;
+logic[2:0] cl_sh_ddr_rready_2d;
 
 // ssh_ddr attached signals
 logic[63:0] sw_cl_sh_ddra_araddr;
@@ -486,97 +521,114 @@ logic[511:0] sw_cl_sh_ddrd_wdata_q;
 logic sw_cl_sh_ddrd_wvalid_q;
 logic sw_cl_sh_ddrd_wready_q;
 
-axi_register_slice DDRA_SW_SLC (
-    .aclk          (clk),
-    .aresetn       (sync_rst_n),
-    .m_axi_araddr  (sw_cl_sh_ddra_araddr),
-    .m_axi_arvalid (sw_cl_sh_ddra_arvalid),
-    .m_axi_arready (sw_cl_sh_ddra_arready),
-    .m_axi_rdata   (sw_cl_sh_ddra_rdata),
-    .m_axi_rvalid  (sw_cl_sh_ddra_rvalid),
-    .m_axi_rready  (sw_cl_sh_ddra_rready),
 
-    .s_axi_araddr  (sw_cl_sh_ddra_araddr_q),
-    .s_axi_arvalid (sw_cl_sh_ddra_arvalid_q),
-    .s_axi_arready (sw_cl_sh_ddra_arready_q),
-    .s_axi_rdata   (sw_cl_sh_ddra_rdata_q),
-    .s_axi_rvalid  (sw_cl_sh_ddra_rvalid_q),
-    .s_axi_rready  (sw_cl_sh_ddra_rready_q)
-);
+logic last_cycle_ddra_ar_handshake;
+logic last_cycle_ddra_ar_handshake_l;
+assign last_cycle_ddra_ar_handshake = (sw_reset_done && sw_cl_sh_ddra_arvalid && sh_cl_ddr_arready_2d[0]) ? 1'b1 : 1'b0;
+always_ff @(posedge clk) begin
+  sw_cl_sh_ddra_araddr <= sw_cl_sh_ddra_araddr_q;
+  sw_cl_sh_ddra_arvalid <= !last_cycle_ddra_ar_handshake && !last_cycle_ddra_ar_handshake_l && sw_cl_sh_ddra_arvalid_q;
+  sw_cl_sh_ddra_rready <= sw_cl_sh_ddra_rready_q;
+  last_cycle_ddra_ar_handshake_l <= last_cycle_ddra_ar_handshake;
+  if (last_cycle_ddra_ar_handshake) begin
+    $display("last_cycle_ddra_ar_handshake");
+  end
+end
+assign sw_cl_sh_ddra_arready_q = sw_cl_sh_ddra_arready;
+assign sw_cl_sh_ddra_rdata_q = sw_cl_sh_ddra_rdata;
+assign sw_cl_sh_ddra_rvalid_q = sw_cl_sh_ddra_rvalid;
 
-axi_register_slice DDRB_SW_SLC (
-    .aclk          (clk),
-    .aresetn       (sync_rst_n),
-    .m_axi_araddr  (sw_cl_sh_ddrb_araddr),
-    .m_axi_arvalid (sw_cl_sh_ddrb_arvalid),
-    .m_axi_arready (sw_cl_sh_ddrb_arready),
-    .m_axi_rdata   (sw_cl_sh_ddrb_rdata),
-    .m_axi_rvalid  (sw_cl_sh_ddrb_rvalid),
-    .m_axi_rready  (sw_cl_sh_ddrb_rready),
+logic last_cycle_ddrb_ar_handshake;
+logic last_cycle_ddrb_ar_handshake_l;
+assign last_cycle_ddrb_ar_handshake = (sw_reset_done && sw_cl_sh_ddrb_arvalid && sh_cl_ddr_arready_2d[1]) ? 1'b1 : 1'b0;
+always_ff @(posedge clk) begin
+  sw_cl_sh_ddrb_araddr <= sw_cl_sh_ddrb_araddr_q;
+  sw_cl_sh_ddrb_arvalid <= !last_cycle_ddrb_ar_handshake && !last_cycle_ddrb_ar_handshake_l && sw_cl_sh_ddrb_arvalid_q;
+  sw_cl_sh_ddrb_rready <= sw_cl_sh_ddrb_rready_q;
+  last_cycle_ddrb_ar_handshake_l <= last_cycle_ddrb_ar_handshake;
+  if (last_cycle_ddrb_ar_handshake) begin
+    $display("last_cycle_ddrb_ar_handshake");
+  end
+end
+assign sw_cl_sh_ddrb_arready_q = sw_cl_sh_ddrb_arready;
+assign sw_cl_sh_ddrb_rdata_q = sw_cl_sh_ddrb_rdata;
+assign sw_cl_sh_ddrb_rvalid_q = sw_cl_sh_ddrb_rvalid;
 
-    .s_axi_araddr  (sw_cl_sh_ddrb_araddr_q),
-    .s_axi_arvalid (sw_cl_sh_ddrb_arvalid_q),
-    .s_axi_arready (sw_cl_sh_ddrb_arready_q),
-    .s_axi_rdata   (sw_cl_sh_ddrb_rdata_q),
-    .s_axi_rvalid  (sw_cl_sh_ddrb_rvalid_q),
-    .s_axi_rready  (sw_cl_sh_ddrb_rready_q)
-);
+logic last_cycle_ddrc_aw_handshake;
+logic last_cycle_ddrc_aw_handshake_l;
+logic last_cycle_ddrc_w_handshake;
+logic last_cycle_ddrc_w_handshake_l;
+assign last_cycle_ddrc_aw_handshake = (sw_reset_done && sw_cl_sh_ddrc_awvalid && sh_cl_ddr_awready) ? 1'b1 : 1'b0;
+assign last_cycle_ddrc_w_handshake = (sw_reset_done && sw_cl_sh_ddrc_wvalid && sh_cl_ddr_wready) ? 1'b1 : 1'b0;
+always_ff @(posedge clk) begin
+  sw_cl_sh_ddrc_awaddr <= sw_cl_sh_ddrc_awaddr_q;
+  sw_cl_sh_ddrc_awvalid <= !last_cycle_ddrc_aw_handshake && !last_cycle_ddrc_aw_handshake_l && sw_cl_sh_ddrc_awvalid_q;
+  sw_cl_sh_ddrc_wdata <= sw_cl_sh_ddrc_wdata_q;
+  sw_cl_sh_ddrc_wvalid <= !last_cycle_ddrc_w_handshake && !last_cycle_ddrc_w_handshake_l && sw_cl_sh_ddrc_wvalid_q;
+  last_cycle_ddrc_aw_handshake_l <= last_cycle_ddrc_aw_handshake;
+  last_cycle_ddrc_w_handshake_l <= last_cycle_ddrc_w_handshake;
+  if (last_cycle_ddrc_aw_handshake) begin
+    $display("last_cycle_ddrc_aw_handshake");
+  end
+  if (last_cycle_ddrc_w_handshake) begin
+    $display("last_cycle_ddrc_w_handshake");
+  end
+end
+assign sw_cl_sh_ddrc_awready_q = sw_cl_sh_ddrc_awready;
+assign sw_cl_sh_ddrc_wready_q = sw_cl_sh_ddrc_wready;
 
-axi_register_slice DDRC_SW_SLC (
-    .aclk          (clk),
-    .aresetn       (sync_rst_n),
-    .m_axi_awaddr  (sw_cl_sh_ddrc_awaddr),
-    .m_axi_awvalid (sw_cl_sh_ddrc_awvalid),
-    .m_axi_awready (sw_cl_sh_ddrc_awready),
-    .m_axi_wdata   (sw_cl_sh_ddrc_wdata),
-    .m_axi_wvalid  (sw_cl_sh_ddrc_wvalid),
-    .m_axi_wready  (sw_cl_sh_ddrc_wready),
-
-    .s_axi_awaddr  (sw_cl_sh_ddrc_awaddr_q),
-    .s_axi_awvalid (sw_cl_sh_ddrc_awvalid_q),
-    .s_axi_awready (sw_cl_sh_ddrc_awready_q),
-    .s_axi_wdata   (sw_cl_sh_ddrc_wdata_q),
-    .s_axi_wvalid  (sw_cl_sh_ddrc_wvalid_q),
-    .s_axi_wready  (sw_cl_sh_ddrc_wready_q)
-);
-
-axi_register_slice DDRD_SW_SLC (
-    .aclk          (clk),
-    .aresetn       (sync_rst_n),
-    .m_axi_awaddr  (sw_cl_sh_ddrd_awaddr),
-    .m_axi_awvalid (sw_cl_sh_ddrd_awvalid),
-    .m_axi_awready (sw_cl_sh_ddrd_awready),
-    .m_axi_wdata   (sw_cl_sh_ddrd_wdata),
-    .m_axi_wvalid  (sw_cl_sh_ddrd_wvalid),
-    .m_axi_wready  (sw_cl_sh_ddrd_wready),
-
-    .s_axi_awaddr  (sw_cl_sh_ddrd_awaddr_q),
-    .s_axi_awvalid (sw_cl_sh_ddrd_awvalid_q),
-    .s_axi_awready (sw_cl_sh_ddrd_awready_q),
-    .s_axi_wdata   (sw_cl_sh_ddrd_wdata_q),
-    .s_axi_wvalid  (sw_cl_sh_ddrd_wvalid_q),
-    .s_axi_wready  (sw_cl_sh_ddrd_wready_q)
-);
+logic last_cycle_ddrd_aw_handshake;
+logic last_cycle_ddrd_aw_handshake_l;
+logic last_cycle_ddrd_w_handshake;
+logic last_cycle_ddrd_w_handshake_l;
+assign last_cycle_ddrd_aw_handshake = (sw_reset_done && sw_cl_sh_ddrd_awvalid && sh_cl_ddr_awready_2d[2]) ? 1'b1 : 1'b0;
+assign last_cycle_ddrd_w_handshake = (sw_reset_done && sw_cl_sh_ddrd_wvalid && sh_cl_ddr_wready_2d[2]) ? 1'b1 : 1'b0;
+always_ff @(posedge clk) begin
+  sw_cl_sh_ddrd_awaddr <= sw_cl_sh_ddrd_awaddr_q;
+  sw_cl_sh_ddrd_awvalid <= !last_cycle_ddrd_aw_handshake && !last_cycle_ddrd_aw_handshake_l && sw_cl_sh_ddrd_awvalid_q;
+  sw_cl_sh_ddrd_wdata <= sw_cl_sh_ddrd_wdata_q;
+  sw_cl_sh_ddrd_wvalid <= !last_cycle_ddrd_w_handshake && !last_cycle_ddrd_w_handshake_l && sw_cl_sh_ddrd_wvalid_q;
+  last_cycle_ddrd_aw_handshake_l <= last_cycle_ddrd_aw_handshake;
+  last_cycle_ddrd_w_handshake_l <= last_cycle_ddrd_w_handshake;
+  if (last_cycle_ddrd_aw_handshake) begin
+    $display("last_cycle_ddrd_aw_handshake");
+  end
+  if (last_cycle_ddrd_w_handshake) begin
+    $display("last_cycle_ddrd_w_handshake");
+  end
+end
+assign sw_cl_sh_ddrd_awready_q = sw_cl_sh_ddrd_awready;
+assign sw_cl_sh_ddrd_wready_q = sw_cl_sh_ddrd_wready;
 
 
 always_ff @(negedge sync_rst_n or posedge clk)
   if (!sync_rst_n) begin
     sw_reset <= 0;
     sw_reset_done <= 0;
+    sw_reset_done_int <= 0;
   end
-  else if (sw_reset_done && sw_finished) begin
+  else if (sw_reset_done && sw_finished_latched) begin
     $display("sw_reset_done back to 0!");
     sw_reset_done <= 0;
   end
-  else if (sw_reset) begin
+  else if (sw_reset_done_int) begin
     $display("sw_reset_done set!");
-    sw_reset <= 0;
+    sw_reset_done_int <= 0;
     sw_reset_done <= 1'b1;
+  end
+  else if (sw_reset) begin
+    $display("sw_reset_done_int set!");
+    sw_reset <= 0;
+    sw_reset_done_int <= 1'b1;
   end
   else if (streaming_active && !sw_reset_done) begin
     $display("sw_reset set!");
     sw_reset <= 1'b1;
   end
+
+always_ff @(posedge clk) begin
+  sw_finished_latched <= sw_finished; 
+end
 
 StreamingWrapper streaming_wrapper(
   .clock(clk),
@@ -608,39 +660,6 @@ StreamingWrapper streaming_wrapper(
   .io_finished(sw_finished)
 );
 
-//convert to 2D 
-logic[15:0] cl_sh_ddr_awid_2d[2:0];
-logic[63:0] cl_sh_ddr_awaddr_2d[2:0];
-logic[7:0] cl_sh_ddr_awlen_2d[2:0];
-logic[2:0] cl_sh_ddr_awsize_2d[2:0];
-logic cl_sh_ddr_awvalid_2d [2:0];
-logic[2:0] sh_cl_ddr_awready_2d;
-
-logic[15:0] cl_sh_ddr_wid_2d[2:0];
-logic[511:0] cl_sh_ddr_wdata_2d[2:0];
-logic[63:0] cl_sh_ddr_wstrb_2d[2:0];
-logic[2:0] cl_sh_ddr_wlast_2d;
-logic[2:0] cl_sh_ddr_wvalid_2d;
-logic[2:0] sh_cl_ddr_wready_2d;
-
-logic[15:0] sh_cl_ddr_bid_2d[2:0];
-logic[1:0] sh_cl_ddr_bresp_2d[2:0];
-logic[2:0] sh_cl_ddr_bvalid_2d;
-logic[2:0] cl_sh_ddr_bready_2d;
-
-logic[15:0] cl_sh_ddr_arid_2d[2:0];
-logic[63:0] cl_sh_ddr_araddr_2d[2:0];
-logic[7:0] cl_sh_ddr_arlen_2d[2:0];
-logic[2:0] cl_sh_ddr_arsize_2d[2:0];
-logic[2:0] cl_sh_ddr_arvalid_2d;
-logic[2:0] sh_cl_ddr_arready_2d;
-
-logic[15:0] sh_cl_ddr_rid_2d[2:0];
-logic[511:0] sh_cl_ddr_rdata_2d[2:0];
-logic[1:0] sh_cl_ddr_rresp_2d[2:0];
-logic[2:0] sh_cl_ddr_rlast_2d;
-logic[2:0] sh_cl_ddr_rvalid_2d;
-logic[2:0] cl_sh_ddr_rready_2d;
 
 // TODO might want to relax awid & wid for performance reasons
 assign cl_sh_ddr_awid_2d = '{sw_reset_done ? 16'b0 : lcl_cl_sh_ddrd.awid, sw_reset_done ? 16'b0 : lcl_cl_sh_ddrb.awid, sw_reset_done ? 16'b0 : lcl_cl_sh_ddra.awid};
@@ -649,7 +668,9 @@ assign cl_sh_ddr_awlen_2d = '{sw_reset_done ? 8'b0 : lcl_cl_sh_ddrd.awlen, sw_re
 assign cl_sh_ddr_awsize_2d = '{sw_reset_done ? 3'b110 : lcl_cl_sh_ddrd.awsize, sw_reset_done ? 3'b110 : lcl_cl_sh_ddrb.awsize, sw_reset_done ? 3'b110 : lcl_cl_sh_ddra.awsize};
 assign cl_sh_ddr_awvalid_2d = '{sw_reset_done ? sw_cl_sh_ddrd_awvalid : lcl_cl_sh_ddrd.awvalid, sw_reset_done ? 1'b0 : lcl_cl_sh_ddrb.awvalid, sw_reset_done ? 1'b0 : lcl_cl_sh_ddra.awvalid};
 assign {lcl_cl_sh_ddrd.awready, lcl_cl_sh_ddrb.awready, lcl_cl_sh_ddra.awready} = sw_reset_done ? {1'b0, 1'b0, 1'b0} : sh_cl_ddr_awready_2d;
-assign sw_cl_sh_ddrd_awready = sw_reset_done ? sh_cl_ddr_awready_2d[2] : 0;
+always_ff @(posedge clk) begin
+  sw_cl_sh_ddrd_awready <= sw_reset_done ? sw_cl_sh_ddrd_awvalid && sh_cl_ddr_awready_2d[2] : 0;
+end
 
 assign cl_sh_ddr_wid_2d = '{sw_reset_done ? 16'b0 : lcl_cl_sh_ddrd.wid, sw_reset_done ? 16'b0 : lcl_cl_sh_ddrb.wid, sw_reset_done ? 16'b0 : lcl_cl_sh_ddra.wid};
 assign cl_sh_ddr_wdata_2d = '{sw_reset_done ? sw_cl_sh_ddrd_wdata : lcl_cl_sh_ddrd.wdata, lcl_cl_sh_ddrb.wdata, lcl_cl_sh_ddra.wdata};
@@ -657,7 +678,9 @@ assign cl_sh_ddr_wstrb_2d = '{sw_reset_done ? 64'hffff_ffff_ffff_ffff : lcl_cl_s
 assign cl_sh_ddr_wlast_2d = {sw_reset_done ? sw_cl_sh_ddrd_wvalid : lcl_cl_sh_ddrd.wlast, sw_reset_done ? 1'b0 : lcl_cl_sh_ddrb.wlast, sw_reset_done ? 1'b0 : lcl_cl_sh_ddra.wlast};
 assign cl_sh_ddr_wvalid_2d = {sw_reset_done ? sw_cl_sh_ddrd_wvalid : lcl_cl_sh_ddrd.wvalid, sw_reset_done ? 1'b0 : lcl_cl_sh_ddrb.wvalid, sw_reset_done ? 1'b0 : lcl_cl_sh_ddra.wvalid};
 assign {lcl_cl_sh_ddrd.wready, lcl_cl_sh_ddrb.wready, lcl_cl_sh_ddra.wready} = sw_reset_done ? {1'b0, 1'b0, 1'b0} : sh_cl_ddr_wready_2d;
-assign sw_cl_sh_ddrd_wready = sw_reset_done ? sh_cl_ddr_wready_2d[2] : 0;
+always_ff @(posedge clk) begin
+  sw_cl_sh_ddrd_wready <= sw_reset_done ? sw_cl_sh_ddrd_wvalid && sh_cl_ddr_wready_2d[2] : 0;
+end
 
 assign {lcl_cl_sh_ddrd.bid, lcl_cl_sh_ddrb.bid, lcl_cl_sh_ddra.bid} = {sh_cl_ddr_bid_2d[2], sh_cl_ddr_bid_2d[1], sh_cl_ddr_bid_2d[0]};
 assign {lcl_cl_sh_ddrd.bresp, lcl_cl_sh_ddrb.bresp, lcl_cl_sh_ddra.bresp} = {sh_cl_ddr_bresp_2d[2], sh_cl_ddr_bresp_2d[1], sh_cl_ddr_bresp_2d[0]};
@@ -670,15 +693,21 @@ assign cl_sh_ddr_arlen_2d = '{sw_reset_done ? 8'b0 : lcl_cl_sh_ddrd.arlen, sw_re
 assign cl_sh_ddr_arsize_2d = '{sw_reset_done ? 3'b110 : lcl_cl_sh_ddrd.arsize, sw_reset_done ? 3'b110 : lcl_cl_sh_ddrb.arsize, sw_reset_done ? 3'b110 : lcl_cl_sh_ddra.arsize};
 assign cl_sh_ddr_arvalid_2d = sw_reset_done ? {1'b0, sw_cl_sh_ddrb_arvalid, sw_cl_sh_ddra_arvalid} : {lcl_cl_sh_ddrd.arvalid, lcl_cl_sh_ddrb.arvalid, lcl_cl_sh_ddra.arvalid};
 assign {lcl_cl_sh_ddrd.arready, lcl_cl_sh_ddrb.arready, lcl_cl_sh_ddra.arready} = sw_reset_done ? {1'b0, 1'b0, 1'b0} : sh_cl_ddr_arready_2d;
-assign {sw_cl_sh_ddrb_arready, sw_cl_sh_ddra_arready} = sw_reset_done ? {sh_cl_ddr_arready_2d[1], sh_cl_ddr_arready_2d[0]} : {1'b0, 1'b0};
+always_ff @(posedge clk) begin
+  {sw_cl_sh_ddrb_arready, sw_cl_sh_ddra_arready} <= sw_reset_done ? {sw_cl_sh_ddrb_arvalid && sh_cl_ddr_arready_2d[1], sw_cl_sh_ddra_arvalid && sh_cl_ddr_arready_2d[0]} : {1'b0, 1'b0};
+end
 
 assign {lcl_cl_sh_ddrd.rid, lcl_cl_sh_ddrb.rid, lcl_cl_sh_ddra.rid} = {sh_cl_ddr_rid_2d[2], sh_cl_ddr_rid_2d[1], sh_cl_ddr_rid_2d[0]};
 assign {lcl_cl_sh_ddrd.rresp, lcl_cl_sh_ddrb.rresp, lcl_cl_sh_ddra.rresp} = sw_reset_done ? {2'b0, 2'b0, 2'b0} : {sh_cl_ddr_rresp_2d[2], sh_cl_ddr_rresp_2d[1], sh_cl_ddr_rresp_2d[0]};
 assign {lcl_cl_sh_ddrd.rdata, lcl_cl_sh_ddrb.rdata, lcl_cl_sh_ddra.rdata} = {sh_cl_ddr_rdata_2d[2], sh_cl_ddr_rdata_2d[1], sh_cl_ddr_rdata_2d[0]};
-assign {sw_cl_sh_ddrb_rdata, sw_cl_sh_ddra_rdata} = {sh_cl_ddr_rdata_2d[1], sh_cl_ddr_rdata_2d[0]};
+always_ff @(posedge clk) begin
+  {sw_cl_sh_ddrb_rdata, sw_cl_sh_ddra_rdata} <= {sh_cl_ddr_rdata_2d[1], sh_cl_ddr_rdata_2d[0]};
+end
 assign {lcl_cl_sh_ddrd.rlast, lcl_cl_sh_ddrb.rlast, lcl_cl_sh_ddra.rlast} = sw_reset_done ? {1'b0, 1'b0, 1'b0} : sh_cl_ddr_rlast_2d;
 assign {lcl_cl_sh_ddrd.rvalid, lcl_cl_sh_ddrb.rvalid, lcl_cl_sh_ddra.rvalid} = sw_reset_done ? {1'b0, 1'b0, 1'b0} : sh_cl_ddr_rvalid_2d;
-assign {sw_cl_sh_ddrb_rvalid, sw_cl_sh_ddra_rvalid} = sw_reset_done ? {sh_cl_ddr_rvalid_2d[1], sh_cl_ddr_rvalid_2d[0]} : {1'b0, 1'b0};
+always_ff @(posedge clk) begin
+  {sw_cl_sh_ddrb_rvalid, sw_cl_sh_ddra_rvalid} <= sw_reset_done ? {sh_cl_ddr_rvalid_2d[1], sh_cl_ddr_rvalid_2d[0]} : {1'b0, 1'b0};
+end
 assign cl_sh_ddr_rready_2d = sw_reset_done ? {1'b0, sw_cl_sh_ddrb_rready, sw_cl_sh_ddra_rready} : {lcl_cl_sh_ddrd.rready, lcl_cl_sh_ddrb.rready, lcl_cl_sh_ddra.rready};
 
 
@@ -728,14 +757,18 @@ assign cl_sh_ddr_awlen = sw_reset_done ? 0 : cl_sh_ddr_bus.awlen;
 assign cl_sh_ddr_awsize = sw_reset_done ? 3'b110 : cl_sh_ddr_bus.awsize;
 assign cl_sh_ddr_awvalid = sw_reset_done ? sw_cl_sh_ddrc_awvalid : cl_sh_ddr_bus.awvalid;
 assign cl_sh_ddr_bus.awready = sw_reset_done ? 0 : sh_cl_ddr_awready;
-assign sw_cl_sh_ddrc_awready = sw_reset_done ? sh_cl_ddr_awready : 0;
+always_ff @(posedge clk) begin
+  sw_cl_sh_ddrc_awready <= sw_reset_done ? sw_cl_sh_ddrc_awvalid && sh_cl_ddr_awready : 0;
+end
 assign cl_sh_ddr_wid = 16'b0;
 assign cl_sh_ddr_wdata = sw_reset_done ? sw_cl_sh_ddrc_wdata : cl_sh_ddr_bus.wdata;
 assign cl_sh_ddr_wstrb = sw_reset_done ? 64'hffff_ffff_ffff_ffff : cl_sh_ddr_bus.wstrb;
 assign cl_sh_ddr_wlast = sw_reset_done ? sw_cl_sh_ddrc_wvalid : cl_sh_ddr_bus.wlast;
 assign cl_sh_ddr_wvalid = sw_reset_done ? sw_cl_sh_ddrc_wvalid : cl_sh_ddr_bus.wvalid;
 assign cl_sh_ddr_bus.wready = sw_reset_done ? 0 : sh_cl_ddr_wready;
-assign sw_cl_sh_ddrc_wready = sw_reset_done ? sh_cl_ddr_wready : 0;
+always_ff @(posedge clk) begin
+  sw_cl_sh_ddrc_wready <= sw_reset_done ? sw_cl_sh_ddrc_wvalid && sh_cl_ddr_wready : 0;
+end
 assign cl_sh_ddr_bus.bid = sh_cl_ddr_bid;
 assign cl_sh_ddr_bus.bresp = sh_cl_ddr_bresp;
 assign cl_sh_ddr_bus.bvalid = sw_reset_done ? 0 : sh_cl_ddr_bvalid;
