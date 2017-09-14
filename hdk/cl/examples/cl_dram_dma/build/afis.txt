@@ -10,3 +10,22 @@
     "FpgaImageGlobalId": "agfi-011dea9c9fd335c93"
 }
 
+        {
+            "UpdateTime": "2017-09-14T17:34:55.000Z", 
+            "Name": "90_core_0x0", 
+            "PciId": {
+                "SubsystemVendorId": "0xfedc", 
+                "VendorId": "0x1d0f", 
+                "DeviceId": "0xf001", 
+                "SubsystemId": "0x1d51"
+            }, 
+            "FpgaImageGlobalId": "agfi-04498a6e454aaf6e0", 
+            "State": {
+                "Code": "available"
+            }, 
+            "ShellVersion": "0x071417d3", 
+            "OwnerId": "491037173944", 
+            "FpgaImageId": "afi-06b97350d2ac7f144", 
+            "CreateTime": "2017-09-14T16:51:46.000Z"
+        },
+
