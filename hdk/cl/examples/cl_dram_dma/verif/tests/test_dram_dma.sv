@@ -31,9 +31,9 @@ module test_dram_dma();
        logic[31:0] streaming_active;
        logic[31:0] cycle_count;
 
-       input_metadata[63:0] = 64'h1000_0040; // input addr
+       input_metadata[63:0] = 64'h40; // input addr
        input_metadata[127:64] = 64'd512; // input length in bits
-       input_metadata[191:128] = 64'h1000_0000; // output addr
+       input_metadata[191:128] = 64'h0; // output addr
        output_metadata[63:0] = 64'd512;
        
 
@@ -64,7 +64,7 @@ module test_dram_dma();
        host_memory_buffer_address = 64'h0;
 
        //Queue data to be transfered to CL DDR
-       tb.que_buffer_to_cl(.chan(0), .src_addr(host_memory_buffer_address), .cl_addr(64'h1000_0000), .len(128) );  // move buffer to DDR 0
+       tb.que_buffer_to_cl(.chan(0), .src_addr(host_memory_buffer_address), .cl_addr(64'h0), .len(128) );  // move buffer to DDR 0
 
        // Put test pattern in host memory       
        for (int i = 0; i < 64; i++) begin
@@ -77,7 +77,7 @@ module test_dram_dma();
        end
        
        host_memory_buffer_address = 64'h0_0000_3000;
-       tb.que_buffer_to_cl(.chan(1), .src_addr(host_memory_buffer_address), .cl_addr(64'h4_1000_0000), .len(128) );  // move buffer to DDR 1
+       tb.que_buffer_to_cl(.chan(1), .src_addr(host_memory_buffer_address), .cl_addr(64'h4_0000_0000), .len(128) );  // move buffer to DDR 1
 
        // Put test pattern in host memory       
        for (int i = 0; i < 64; i++) begin
@@ -131,10 +131,10 @@ module test_dram_dma();
 
        // read the data from cl and put it in the host memory 
        host_memory_buffer_address = 64'h0_0003_2800;                                                                                        
-       tb.que_cl_to_buffer(.chan(2), .dst_addr(host_memory_buffer_address), .cl_addr(64'h8_1000_0000), .len(128) );  // move DDR2 to buffer
+       tb.que_cl_to_buffer(.chan(2), .dst_addr(host_memory_buffer_address), .cl_addr(64'h8_0000_0000), .len(128) );  // move DDR2 to buffer
                                                                                                                                             
        host_memory_buffer_address = 64'h0_0004_3800;                                                                                        
-       tb.que_cl_to_buffer(.chan(3), .dst_addr(host_memory_buffer_address), .cl_addr(64'hC_1000_0000), .len(128) );  // move DDR3 to buffer
+       tb.que_cl_to_buffer(.chan(3), .dst_addr(host_memory_buffer_address), .cl_addr(64'hC_0000_0000), .len(128) );  // move DDR3 to buffer
        
        //Start transfers of data from CL DDR
        tb.start_que_to_buffer(.chan(2));   
