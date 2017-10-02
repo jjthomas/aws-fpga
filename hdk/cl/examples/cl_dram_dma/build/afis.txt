@@ -32,6 +32,6 @@
 [centos@ip-172-31-63-154 scripts]$ aws ec2 create-fpga-image --region us-east-1 --name 90_core_0x0_better_wns (good custom register slice) --input-storage-location Bucket=fpga-dcp,Key=dcp/17_09_14-170147.Developer_CL.tar --logs-storage-location Bucket=fpga-dcp,Key=logs
 {
     "FpgaImageId": "afi-0b34ec862a602e176", 
-    "FpgaImageGlobalId": "agfi-09d0f4c04cfdc2d28"
+    "FpgaImageGlobalId": "agfi-09d0f4c04cfdc2d28" (verified correct)
 }
 
