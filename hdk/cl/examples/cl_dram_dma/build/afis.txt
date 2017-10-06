@@ -13,5 +13,11 @@
 [centos@ip-172-31-63-154 scripts]$ aws ec2 create-fpga-image --region us-east-1 --name 200_core_tree_select --input-storage-location Bucket=fpga-dcp,Key=dcp/17_10_02-052726.Developer_CL.tar --logs-storage-location Bucket=fpga-dcp,Key=logs
 {
     "FpgaImageId": "afi-02491737d41cf4c2c", 
-    "FpgaImageGlobalId": "agfi-01721941edf98366e"
+    "FpgaImageGlobalId": "agfi-01721941edf98366e" (verified correct)
+}
+
+[centos@ip-172-31-63-154 cl_dram_dma]$ aws ec2 create-fpga-image --region us-east-1 --name 224_core_tree_select_faster_mem --input-storage-location Bucket=fpga-dcp,Key=dcp/17_10_05-211624.Developer_CL.tar --logs-storage-location Bucket=fpga-dcp,Key=logs
+{
+    "FpgaImageId": "afi-0b32cae375d9728f6", 
+    "FpgaImageGlobalId": "agfi-07ba3943d3f26e90d"
 }
