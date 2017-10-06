@@ -109,9 +109,10 @@ int dma_example(int slot_id) {
     int fd, rc;
     char device_file_name[256];
     char *write_buffer, *read_buffer, *expected_read_buffer;
-    static const int num_cores = 90;
+    static const int num_cores = 224;
+    static const int num_data_blocks = 10;
     static const int mem_offset = 0;
-    const size_t buffer_size = 128 * (num_cores / 2);
+    const size_t buffer_size = 64 * (num_data_blocks + 1) * (num_cores / 2);
     int channel=0;
 
     read_buffer = NULL;
@@ -150,20 +151,20 @@ int dma_example(int slot_id) {
     cache_line *cl_wb = (cache_line *)write_buffer; 
     cache_line *cl_rb = (cache_line *)expected_read_buffer; 
     for (int i = 0; i < num_cores/2; i++) { 
-      cl_wb[i].data[0] = mem_offset + 64 * (num_cores/2 + i);
-      cl_wb[i].data[1] = 512;
-      cl_wb[i].data[2] = mem_offset + 128 * i;
+      cl_wb[i].data[0] = mem_offset + 64 * (num_cores/2 + i * num_data_blocks);
+      cl_wb[i].data[1] = 512 * num_data_blocks;
+      cl_wb[i].data[2] = mem_offset + 64 * (num_data_blocks + 1) * i;
 
-      cl_rb[i * 2].data[0] = 512;
+      cl_rb[i * (num_data_blocks + 1)].data[0] = 512 * num_data_blocks;
       for (int j = 1; j < 8; j++) {
-        cl_rb[i * 2].data[j] = 0;
+        cl_rb[i * (num_data_blocks + 1)].data[j] = 0;
       }
     }
-    for (int i = num_cores/2; i < num_cores; i++) { 
+    for (int i = num_cores/2; i < num_cores/2 * (num_data_blocks + 1); i++) { 
       for (int j = 0; j < 8; j++) {
         cl_wb[i].data[j] = i + j;
-
-        cl_rb[(i - num_cores/2) * 2 + 1].data[j] = i + j;
+        int offset = i - num_cores/2;
+        cl_rb[offset / num_data_blocks * (num_data_blocks + 1) + (offset % num_data_blocks) + 1].data[j] = i + j;
       }
     }
 
