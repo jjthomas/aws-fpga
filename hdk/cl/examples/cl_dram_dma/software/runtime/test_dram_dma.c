@@ -109,8 +109,8 @@ int dma_example(int slot_id) {
     int fd, rc;
     char device_file_name[256];
     char *write_buffer, *read_buffer, *expected_read_buffer;
-    static const int num_cores = 2;
-    static const int mem_offset = 0x10000000;
+    static const int num_cores = 90;
+    static const int mem_offset = 0;
     const size_t buffer_size = 128 * (num_cores / 2);
     int channel=0;
 
