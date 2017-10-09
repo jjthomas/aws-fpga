@@ -21,3 +21,9 @@
     "FpgaImageId": "afi-0b32cae375d9728f6", 
     "FpgaImageGlobalId": "agfi-07ba3943d3f26e90d"
 }
+
+[centos@ip-172-31-63-154 cl_dram_dma]$ aws ec2 create-fpga-image --region us-east-1 --name 224_core_tree_select_faster_mem (actually experimental 224_core 16-beat burst) --input-storage-location Bucket=fpga-dcp,Key=dcp/17_10_09-064550.Developer_CL.tar --logs-storage-location Bucket=fpga-dcp,Key=logs
+{
+    "FpgaImageId": "afi-00702ad7e9fea0755", 
+    "FpgaImageGlobalId": "agfi-057287619ba144c6f"
+}
