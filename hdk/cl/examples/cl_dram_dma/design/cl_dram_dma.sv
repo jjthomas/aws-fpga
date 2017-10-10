@@ -565,7 +565,7 @@ assign cl_sh_ddr_bready_2d = {sw_reset_done ? 1'b1 : lcl_cl_sh_ddrd.bready, sw_r
 
 assign cl_sh_ddr_arid_2d = '{sw_reset_done ? 16'b0 : lcl_cl_sh_ddrd.arid, sw_reset_done ? 16'b0 : lcl_cl_sh_ddrb.arid, sw_reset_done ? 16'b0 : lcl_cl_sh_ddra.arid};
 assign cl_sh_ddr_araddr_2d = '{sw_reset_done ? 64'b0 : lcl_cl_sh_ddrd.araddr, sw_reset_done ? sw_cl_sh_ddrb_araddr : lcl_cl_sh_ddrb.araddr, sw_reset_done ? sw_cl_sh_ddra_araddr : lcl_cl_sh_ddra.araddr};
-assign cl_sh_ddr_arlen_2d = '{sw_reset_done ? 8'b0 : lcl_cl_sh_ddrd.arlen, sw_reset_done ? 8'b0 : lcl_cl_sh_ddrb.arlen, sw_reset_done ? 8'b0 : lcl_cl_sh_ddra.arlen};
+assign cl_sh_ddr_arlen_2d = '{sw_reset_done ? 8'b0 : lcl_cl_sh_ddrd.arlen, sw_reset_done ? 8'b00001111 : lcl_cl_sh_ddrb.arlen, sw_reset_done ? 8'b00001111 : lcl_cl_sh_ddra.arlen};
 assign cl_sh_ddr_arsize_2d = '{sw_reset_done ? 3'b110 : lcl_cl_sh_ddrd.arsize, sw_reset_done ? 3'b110 : lcl_cl_sh_ddrb.arsize, sw_reset_done ? 3'b110 : lcl_cl_sh_ddra.arsize};
 assign cl_sh_ddr_arvalid_2d = sw_reset_done ? {1'b0, sw_cl_sh_ddrb_arvalid, sw_cl_sh_ddra_arvalid} : {lcl_cl_sh_ddrd.arvalid, lcl_cl_sh_ddrb.arvalid, lcl_cl_sh_ddra.arvalid};
 assign {lcl_cl_sh_ddrd.arready, lcl_cl_sh_ddrb.arready, lcl_cl_sh_ddra.arready} = sw_reset_done ? {1'b0, 1'b0, 1'b0} : sh_cl_ddr_arready_2d;
