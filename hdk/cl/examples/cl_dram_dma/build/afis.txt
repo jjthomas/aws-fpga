@@ -27,3 +27,9 @@
     "FpgaImageId": "afi-00702ad7e9fea0755", 
     "FpgaImageGlobalId": "agfi-057287619ba144c6f"
 }
+
+[centos@ip-172-31-63-154 scripts]$ aws ec2 create-fpga-image --region us-east-1 --name 224_core_input_output_grouped --input-storage-location Bucket=fpga-dcp,Key=dcp/17_10_10-091233.Developer_CL.tar --logs-storage-location Bucket=fpga-dcp,Key=logs
+{
+    "FpgaImageId": "afi-0c39cc6765cb01f8d", 
+    "FpgaImageGlobalId": "agfi-0960d9f5743f89343"
+}
