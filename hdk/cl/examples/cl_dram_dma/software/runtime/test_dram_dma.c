@@ -109,10 +109,11 @@ int dma_example(int slot_id) {
     int fd, rc;
     char device_file_name[256];
     char *write_buffer, *read_buffer, *expected_read_buffer;
-    static const int num_cores = 224;
-    static const int num_data_blocks = 10;
-    static const int mem_offset = 0;
-    const size_t buffer_size = 64 * (num_data_blocks + 1) * (num_cores / 2);
+    static const int num_cores = 512;
+    static const int num_data_blocks = 100;
+    static const int input_mem_offset = 0;
+    static const int output_mem_offset = 1000000000;
+    const size_t buffer_size = 64 * (num_data_blocks + 1) * (num_cores / 4);
     int channel=0;
 
     read_buffer = NULL;
@@ -150,26 +151,26 @@ int dma_example(int slot_id) {
 
     cache_line *cl_wb = (cache_line *)write_buffer; 
     cache_line *cl_rb = (cache_line *)expected_read_buffer; 
-    for (int i = 0; i < num_cores/2; i++) { 
-      cl_wb[i].data[0] = mem_offset + 64 * (num_cores/2 + i * num_data_blocks);
+    for (int i = 0; i < num_cores/4; i++) { 
+      cl_wb[i].data[0] = input_mem_offset + 64 * (num_cores/4 + i * num_data_blocks);
       cl_wb[i].data[1] = 512 * num_data_blocks;
-      cl_wb[i].data[2] = mem_offset + 64 * (num_data_blocks + 1) * i;
+      cl_wb[i].data[2] = output_mem_offset + 64 * (num_data_blocks + 1) * i;
 
       cl_rb[i * (num_data_blocks + 1)].data[0] = 512 * num_data_blocks;
       for (int j = 1; j < 8; j++) {
         cl_rb[i * (num_data_blocks + 1)].data[j] = 0;
       }
     }
-    for (int i = num_cores/2; i < num_cores/2 * (num_data_blocks + 1); i++) { 
+    for (int i = num_cores/4; i < num_cores/4 * (num_data_blocks + 1); i++) { 
       for (int j = 0; j < 8; j++) {
         cl_wb[i].data[j] = i + j;
-        int offset = i - num_cores/2;
+        int offset = i - num_cores/4;
         cl_rb[offset / num_data_blocks * (num_data_blocks + 1) + (offset % num_data_blocks) + 1].data[j] = i + j;
       }
     }
 
 
-    for (channel=0; channel < 2; channel++) {
+    for (channel=0; channel < 4; channel++) {
         size_t write_offset = 0;
         while (write_offset < buffer_size) {
             if (write_offset != 0) {
@@ -179,7 +180,7 @@ int dma_example(int slot_id) {
             rc = pwrite(fd,
                 write_buffer + write_offset,
                 buffer_size - write_offset,
-                mem_offset + channel*MEM_16G + write_offset);
+                input_mem_offset + channel*MEM_16G + write_offset);
             if (rc < 0) {
                 fail_on((rc = (rc < 0)? errno:0), out, "call to pwrite failed.");
             }
@@ -213,7 +214,7 @@ int dma_example(int slot_id) {
     fpga_pci_peek(pci_bar_handle, 0x600, &reg_peek);
     printf("Number of cycles for streaming: %d\n", reg_peek);
 
-    for (channel=2; channel < 4; channel++) {
+    for (channel=0; channel < 4; channel++) {
         size_t read_offset = 0;
         while (read_offset < buffer_size) {
             if (read_offset != 0) {
@@ -223,7 +224,7 @@ int dma_example(int slot_id) {
             rc = pread(fd,
                 read_buffer + read_offset,
                 buffer_size - read_offset,
-                mem_offset + channel*MEM_16G + read_offset);
+                output_mem_offset + channel*MEM_16G + read_offset);
             if (rc < 0) {
                 fail_on((rc = (rc < 0)? errno:0), out, "call to pread failed.");
             }
@@ -234,6 +235,7 @@ int dma_example(int slot_id) {
     	if (memcmp(expected_read_buffer, read_buffer, buffer_size) == 0) {
         	printf("DRAM DMA read the correct string for channel %d (it worked correctly!)\n", channel);
     	} else {
+            /*
             int i;
             printf("Numbers expected from channel %d:\n", channel);
             for (i = 0; i < buffer_size/8; ++i) {
@@ -247,6 +249,7 @@ int dma_example(int slot_id) {
                 printf("%" PRIu64 " ", ((uint64_t *)read_buffer)[i]);
             }
             printf("\n\n");
+            */
          
             rc = 1; 
             fail_on(rc, out, "Data read from DMA did not match data written with DMA. Was there an fsync() between the read and write?");
