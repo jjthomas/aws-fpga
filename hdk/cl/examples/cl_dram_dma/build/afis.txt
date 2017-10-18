@@ -45,3 +45,10 @@
     "FpgaImageId": "afi-0b8cbccf2270529f6", 
     "FpgaImageGlobalId": "agfi-0e11755175cee5b0c"
 }
+
+[centos@ip-172-31-63-154 build]$ ./upload_build.sh 17_10_17-181856.Developer_CL.tar 512_core_output_addr_piped
+upload: checkpoints/to_aws/17_10_17-181856.Developer_CL.tar to s3://fpga-dcp/dcp/17_10_17-181856.Developer_CL.tar
+{
+    "FpgaImageId": "afi-009a67b863f8c823f", 
+    "FpgaImageGlobalId": "agfi-0b53c66cade44041f"
+}
