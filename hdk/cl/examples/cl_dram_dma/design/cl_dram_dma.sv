@@ -437,6 +437,7 @@ logic sw_cl_sh_ddra_rvalid;
 logic sw_cl_sh_ddra_rready;
 logic[63:0] sw_cl_sh_ddra_awaddr;
 logic sw_cl_sh_ddra_awvalid;
+logic[15:0] sw_cl_sh_ddra_awid;
 logic sw_cl_sh_ddra_awready;
 logic[511:0] sw_cl_sh_ddra_wdata;
 logic sw_cl_sh_ddra_wvalid;
@@ -450,6 +451,7 @@ logic sw_cl_sh_ddrb_rvalid;
 logic sw_cl_sh_ddrb_rready;
 logic[63:0] sw_cl_sh_ddrb_awaddr;
 logic sw_cl_sh_ddrb_awvalid;
+logic[15:0] sw_cl_sh_ddrb_awid;
 logic sw_cl_sh_ddrb_awready;
 logic[511:0] sw_cl_sh_ddrb_wdata;
 logic sw_cl_sh_ddrb_wvalid;
@@ -463,6 +465,7 @@ logic sw_cl_sh_ddrc_rvalid;
 logic sw_cl_sh_ddrc_rready;
 logic[63:0] sw_cl_sh_ddrc_awaddr;
 logic sw_cl_sh_ddrc_awvalid;
+logic[15:0] sw_cl_sh_ddrc_awid;
 logic sw_cl_sh_ddrc_awready;
 logic[511:0] sw_cl_sh_ddrc_wdata;
 logic sw_cl_sh_ddrc_wvalid;
@@ -476,6 +479,7 @@ logic sw_cl_sh_ddrd_rvalid;
 logic sw_cl_sh_ddrd_rready;
 logic[63:0] sw_cl_sh_ddrd_awaddr;
 logic sw_cl_sh_ddrd_awvalid;
+logic[15:0] sw_cl_sh_ddrd_awid;
 logic sw_cl_sh_ddrd_awready;
 logic[511:0] sw_cl_sh_ddrd_wdata;
 logic sw_cl_sh_ddrd_wvalid;
@@ -536,6 +540,10 @@ StreamingWrapper streaming_wrapper(
   .io_outputMemAddrValids_1(sw_cl_sh_ddrb_awvalid),
   .io_outputMemAddrValids_2(sw_cl_sh_ddrc_awvalid),
   .io_outputMemAddrValids_3(sw_cl_sh_ddrd_awvalid),
+  .io_outputMemAddrIds_0(sw_cl_sh_ddra_awid),
+  .io_outputMemAddrIds_1(sw_cl_sh_ddrb_awid),
+  .io_outputMemAddrIds_2(sw_cl_sh_ddrc_awid),
+  .io_outputMemAddrIds_3(sw_cl_sh_ddrd_awid),
   .io_outputMemAddrReadys_0(sw_cl_sh_ddra_awready),
   .io_outputMemAddrReadys_1(sw_cl_sh_ddrb_awready),
   .io_outputMemAddrReadys_2(sw_cl_sh_ddrc_awready),
@@ -590,7 +598,7 @@ logic[2:0] sh_cl_ddr_rvalid_2d;
 logic[2:0] cl_sh_ddr_rready_2d;
 
 // TODO might want to relax awid & wid for performance reasons
-assign cl_sh_ddr_awid_2d = '{sw_reset_done ? 16'b0 : lcl_cl_sh_ddrd.awid, sw_reset_done ? 16'b0 : lcl_cl_sh_ddrb.awid, sw_reset_done ? 16'b0 : lcl_cl_sh_ddra.awid};
+assign cl_sh_ddr_awid_2d = '{sw_reset_done ? sw_cl_sh_ddrd_awid : lcl_cl_sh_ddrd.awid, sw_reset_done ? sw_cl_sh_ddrb_awid : lcl_cl_sh_ddrb.awid, sw_reset_done ? sw_cl_sh_ddra_awid : lcl_cl_sh_ddra.awid};
 assign cl_sh_ddr_awaddr_2d = '{sw_reset_done ? sw_cl_sh_ddrd_awaddr : lcl_cl_sh_ddrd.awaddr, sw_reset_done ? sw_cl_sh_ddrb_awaddr : lcl_cl_sh_ddrb.awaddr, sw_reset_done ? sw_cl_sh_ddra_awaddr : lcl_cl_sh_ddra.awaddr};
 assign cl_sh_ddr_awlen_2d = '{sw_reset_done ? 8'b0 : lcl_cl_sh_ddrd.awlen, sw_reset_done ? 8'b0 : lcl_cl_sh_ddrb.awlen, sw_reset_done ? 8'b0 : lcl_cl_sh_ddra.awlen};
 assign cl_sh_ddr_awsize_2d = '{sw_reset_done ? 3'b110 : lcl_cl_sh_ddrd.awsize, sw_reset_done ? 3'b110 : lcl_cl_sh_ddrb.awsize, sw_reset_done ? 3'b110 : lcl_cl_sh_ddra.awsize};
@@ -669,7 +677,7 @@ always_ff @(posedge clk)
     $display("DDR C read address: %0x", cl_sh_ddr_araddr);
   end
 
-assign cl_sh_ddr_awid = sw_reset_done ? 0 : cl_sh_ddr_bus.awid;
+assign cl_sh_ddr_awid = sw_reset_done ? sw_cl_sh_ddrc_awid : cl_sh_ddr_bus.awid;
 assign cl_sh_ddr_awaddr = sw_reset_done ? sw_cl_sh_ddrc_awaddr : cl_sh_ddr_bus.awaddr;
 assign cl_sh_ddr_awlen = sw_reset_done ? 0 : cl_sh_ddr_bus.awlen;
 assign cl_sh_ddr_awsize = sw_reset_done ? 3'b110 : cl_sh_ddr_bus.awsize;
