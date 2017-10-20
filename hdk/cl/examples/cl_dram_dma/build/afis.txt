@@ -53,9 +53,8 @@ upload: checkpoints/to_aws/17_10_17-181856.Developer_CL.tar to s3://fpga-dcp/dcp
     "FpgaImageGlobalId": "agfi-0b53c66cade44041f"
 }
 
-[centos@ip-172-31-63-154 build]$ ./upload_build.sh 17_10_19-235904 512_core_group_size_32
-upload: checkpoints/to_aws/17_10_19-235904.Developer_CL.tar to s3://fpga-dcp/dcp/17_10_19-235904.Developer_CL.tar
+[centos@ip-172-31-50-136 build]$ aws ec2 create-fpga-image --region us-east-1 --name 512_core_group_size_32_real --input-storage-location Bucket=fpga-dcp,Key=dcp/17_10_19-235904.Developer_CL.tar --logs-storage-location Bucket=fpga-dcp,Key=logs
 {
-    "FpgaImageId": "afi-0e21f3f0acc222a7e", 
-    "FpgaImageGlobalId": "agfi-069a28755e0dbbba8"
+    "FpgaImageId": "afi-0ca41c791a3ddf4d7", 
+    "FpgaImageGlobalId": "agfi-06bd2550d6190b332"
 }
