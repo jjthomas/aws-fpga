@@ -14,3 +14,4 @@ aws ec2 create-fpga-image --region us-east-1 --name $2 --input-storage-location 
 rm $CL_DIR/build/checkpoints/to_aws/$1*.dcp
 rm $CL_DIR/build/checkpoints/$1*.dcp
 rm $CL_DIR/build/checkpoints/to_aws/$1*.tar
+rm -rf $CL_DIR/build/scripts/.Xil
