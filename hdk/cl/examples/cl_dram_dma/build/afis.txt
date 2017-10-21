@@ -59,9 +59,15 @@ upload: checkpoints/to_aws/17_10_17-181856.Developer_CL.tar to s3://fpga-dcp/dcp
     "FpgaImageGlobalId": "agfi-06bd2550d6190b332"
 }
 
-[centos@ip-172-31-63-154 build]$ ./upload_build.sh 17_10_20-175407 512_core_32_bit_bramWidth (group size 16)
+[centos@ip-172-31-63-154 build]$ ./upload_build.sh 17_10_20-175407 512_core_32_bit_bramWidth (group size 16) [seems to have failed to build]
 upload: checkpoints/to_aws/17_10_20-175407.Developer_CL.tar to s3://fpga-dcp/dcp/17_10_20-175407.Developer_CL.tar
 {
     "FpgaImageId": "afi-0b60868328ac1d889", 
     "FpgaImageGlobalId": "agfi-038c28190a7987cb1"
+}
+
+[centos@ip-172-31-50-136 runtime]$ aws ec2 create-fpga-image --region us-east-1 --name 512_core_32_bit_bramWidth_real (group size 16) --input-storage-location Bucket=fpga-dcp,Key=dcp/17_10_20-175407.Developer_CL.tar --logs-storage-location Bucket=fpga-dcp,Key=logs
+{
+    "FpgaImageId": "afi-0facdd40824476421", 
+    "FpgaImageGlobalId": "agfi-0e4bc02e3876e0486"
 }
