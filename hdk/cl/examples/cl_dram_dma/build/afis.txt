@@ -99,3 +99,10 @@ upload: checkpoints/to_aws/17_10_25-084050.Developer_CL.tar to s3://fpga-dcp/dcp
     "FpgaImageId": "afi-082816f9bc0f3a8b0", 
     "FpgaImageGlobalId": "agfi-0cdd29a9bfd2b7453"
 }
+
+[centos@ip-172-31-63-154 build]$ ./upload_build.sh 17_10_25-205719 512_core_16_group_32_bramWidth_8_bit
+upload: checkpoints/to_aws/17_10_25-205719.Developer_CL.tar to s3://fpga-dcp/dcp/17_10_25-205719.Developer_CL.tar
+{
+    "FpgaImageId": "afi-0a94020b7e4aed710", 
+    "FpgaImageGlobalId": "agfi-008e52b99262ad040"
+}
