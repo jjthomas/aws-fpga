@@ -443,6 +443,7 @@ logic[15:0] sw_cl_sh_ddra_awid;
 logic sw_cl_sh_ddra_awready;
 logic[511:0] sw_cl_sh_ddra_wdata;
 logic sw_cl_sh_ddra_wvalid;
+logic sw_cl_sh_ddra_wlast;
 logic sw_cl_sh_ddra_wready;
 
 logic[63:0] sw_cl_sh_ddrb_araddr;
@@ -459,6 +460,7 @@ logic[15:0] sw_cl_sh_ddrb_awid;
 logic sw_cl_sh_ddrb_awready;
 logic[511:0] sw_cl_sh_ddrb_wdata;
 logic sw_cl_sh_ddrb_wvalid;
+logic sw_cl_sh_ddrb_wlast;
 logic sw_cl_sh_ddrb_wready;
 
 logic[63:0] sw_cl_sh_ddrc_araddr;
@@ -475,6 +477,7 @@ logic[15:0] sw_cl_sh_ddrc_awid;
 logic sw_cl_sh_ddrc_awready;
 logic[511:0] sw_cl_sh_ddrc_wdata;
 logic sw_cl_sh_ddrc_wvalid;
+logic sw_cl_sh_ddrc_wlast;
 logic sw_cl_sh_ddrc_wready;
 
 logic[63:0] sw_cl_sh_ddrd_araddr;
@@ -491,6 +494,7 @@ logic[15:0] sw_cl_sh_ddrd_awid;
 logic sw_cl_sh_ddrd_awready;
 logic[511:0] sw_cl_sh_ddrd_wdata;
 logic sw_cl_sh_ddrd_wvalid;
+logic sw_cl_sh_ddrd_wlast;
 logic sw_cl_sh_ddrd_wready;
 
 
@@ -572,6 +576,10 @@ StreamingWrapper streaming_wrapper(
   .io_outputMemBlockValids_1(sw_cl_sh_ddrb_wvalid),
   .io_outputMemBlockValids_2(sw_cl_sh_ddrc_wvalid),
   .io_outputMemBlockValids_3(sw_cl_sh_ddrd_wvalid),
+  .io_outputMemBlockLasts_0(sw_cl_sh_ddra_wlast),
+  .io_outputMemBlockLasts_1(sw_cl_sh_ddrb_wlast),
+  .io_outputMemBlockLasts_2(sw_cl_sh_ddrc_wlast),
+  .io_outputMemBlockLasts_3(sw_cl_sh_ddrd_wlast),
   .io_outputMemBlockReadys_0(sw_cl_sh_ddra_wready),
   .io_outputMemBlockReadys_1(sw_cl_sh_ddrb_wready),
   .io_outputMemBlockReadys_2(sw_cl_sh_ddrc_wready),
@@ -625,7 +633,7 @@ assign {sw_cl_sh_ddrd_awready, sw_cl_sh_ddrb_awready, sw_cl_sh_ddra_awready} = s
 assign cl_sh_ddr_wid_2d = '{sw_reset_done ? 16'b0 : lcl_cl_sh_ddrd.wid, sw_reset_done ? 16'b0 : lcl_cl_sh_ddrb.wid, sw_reset_done ? 16'b0 : lcl_cl_sh_ddra.wid};
 assign cl_sh_ddr_wdata_2d = '{sw_reset_done ? sw_cl_sh_ddrd_wdata : lcl_cl_sh_ddrd.wdata, sw_reset_done ? sw_cl_sh_ddrb_wdata : lcl_cl_sh_ddrb.wdata, sw_reset_done ? sw_cl_sh_ddra_wdata : lcl_cl_sh_ddra.wdata};
 assign cl_sh_ddr_wstrb_2d = '{sw_reset_done ? 64'hffff_ffff_ffff_ffff : lcl_cl_sh_ddrd.wstrb, sw_reset_done ? 64'hffff_ffff_ffff_ffff : lcl_cl_sh_ddrb.wstrb, sw_reset_done ? 64'hffff_ffff_ffff_ffff : lcl_cl_sh_ddra.wstrb};
-assign cl_sh_ddr_wlast_2d = {sw_reset_done ? sw_cl_sh_ddrd_wvalid : lcl_cl_sh_ddrd.wlast, sw_reset_done ? sw_cl_sh_ddrb_wvalid : lcl_cl_sh_ddrb.wlast, sw_reset_done ? sw_cl_sh_ddra_wvalid : lcl_cl_sh_ddra.wlast};
+assign cl_sh_ddr_wlast_2d = {sw_reset_done ? sw_cl_sh_ddrd_wlast : lcl_cl_sh_ddrd.wlast, sw_reset_done ? sw_cl_sh_ddrb_wlast : lcl_cl_sh_ddrb.wlast, sw_reset_done ? sw_cl_sh_ddra_wlast : lcl_cl_sh_ddra.wlast};
 assign cl_sh_ddr_wvalid_2d = {sw_reset_done ? sw_cl_sh_ddrd_wvalid : lcl_cl_sh_ddrd.wvalid, sw_reset_done ? sw_cl_sh_ddrb_wvalid : lcl_cl_sh_ddrb.wvalid, sw_reset_done ? sw_cl_sh_ddra_wvalid : lcl_cl_sh_ddra.wvalid};
 assign {lcl_cl_sh_ddrd.wready, lcl_cl_sh_ddrb.wready, lcl_cl_sh_ddra.wready} = sw_reset_done ? {1'b0, 1'b0, 1'b0} : sh_cl_ddr_wready_2d;
 assign {sw_cl_sh_ddrd_wready, sw_cl_sh_ddrb_wready, sw_cl_sh_ddra_wready} = sw_reset_done ? sh_cl_ddr_wready_2d : {1'b0, 1'b0, 1'b0};
@@ -703,7 +711,7 @@ assign sw_cl_sh_ddrc_awready = sw_reset_done ? sh_cl_ddr_awready : 0;
 assign cl_sh_ddr_wid = 16'b0;
 assign cl_sh_ddr_wdata = sw_reset_done ? sw_cl_sh_ddrc_wdata : cl_sh_ddr_bus.wdata;
 assign cl_sh_ddr_wstrb = sw_reset_done ? 64'hffff_ffff_ffff_ffff : cl_sh_ddr_bus.wstrb;
-assign cl_sh_ddr_wlast = sw_reset_done ? sw_cl_sh_ddrc_wvalid : cl_sh_ddr_bus.wlast;
+assign cl_sh_ddr_wlast = sw_reset_done ? sw_cl_sh_ddrc_wlast : cl_sh_ddr_bus.wlast;
 assign cl_sh_ddr_wvalid = sw_reset_done ? sw_cl_sh_ddrc_wvalid : cl_sh_ddr_bus.wvalid;
 assign cl_sh_ddr_bus.wready = sw_reset_done ? 0 : sh_cl_ddr_wready;
 assign sw_cl_sh_ddrc_wready = sw_reset_done ? sh_cl_ddr_wready : 0;
