@@ -20,13 +20,16 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <poll.h>
+#include <sys/time.h>
 
 #include <fpga_pci.h>
 #include <fpga_mgmt.h>
 #include <utils/lcd.h>
 
+#define NUM_WORDS_IN_LINE 16
+
 typedef struct __attribute__((packed)) {
-  uint64_t data[8];
+  uint64_t data[NUM_WORDS_IN_LINE];
 } cache_line;
 
 static uint16_t pci_vendor_id = 0x1D0F; /* Amazon PCI Vendor ID */
@@ -113,7 +116,7 @@ int dma_example(int slot_id) {
     static const int num_data_blocks = 100;
     static const int input_mem_offset = 0;
     static const int output_mem_offset = 1000000000;
-    const size_t buffer_size = 64 * (num_data_blocks + 1) * (num_cores / 4);
+    const size_t buffer_size = NUM_WORDS_IN_LINE * 8 * (num_data_blocks + 1) * (num_cores/4);
     int channel=0;
 
     read_buffer = NULL;
@@ -152,24 +155,25 @@ int dma_example(int slot_id) {
     cache_line *cl_wb = (cache_line *)write_buffer; 
     cache_line *cl_rb = (cache_line *)expected_read_buffer; 
     for (int i = 0; i < num_cores/4; i++) { 
-      cl_wb[i].data[0] = input_mem_offset + 64 * (num_cores/4 + i * num_data_blocks);
-      cl_wb[i].data[1] = 512 * num_data_blocks;
-      cl_wb[i].data[2] = output_mem_offset + 64 * (num_data_blocks + 1) * i;
+      cl_wb[i].data[0] = input_mem_offset + NUM_WORDS_IN_LINE * 8 * (num_cores/4 + i * num_data_blocks);
+      cl_wb[i].data[1] = NUM_WORDS_IN_LINE * 64 * num_data_blocks;
+      cl_wb[i].data[2] = output_mem_offset + NUM_WORDS_IN_LINE * 8 * (num_data_blocks + 1) * i;
 
-      cl_rb[i * (num_data_blocks + 1)].data[0] = 512 * num_data_blocks;
-      for (int j = 1; j < 8; j++) {
+      cl_rb[i * (num_data_blocks + 1)].data[0] = NUM_WORDS_IN_LINE * 64 * num_data_blocks;
+      for (int j = 1; j < NUM_WORDS_IN_LINE; j++) {
         cl_rb[i * (num_data_blocks + 1)].data[j] = 0;
       }
     }
     for (int i = num_cores/4; i < num_cores/4 * (num_data_blocks + 1); i++) { 
-      for (int j = 0; j < 8; j++) {
+      for (int j = 0; j < NUM_WORDS_IN_LINE; j++) {
         cl_wb[i].data[j] = i + j;
         int offset = i - num_cores/4;
         cl_rb[offset / num_data_blocks * (num_data_blocks + 1) + (offset % num_data_blocks) + 1].data[j] = i + j;
       }
     }
 
-
+    struct timeval start, end, diff;
+    gettimeofday(&start, 0);
     for (channel=0; channel < 4; channel++) {
         size_t write_offset = 0;
         while (write_offset < buffer_size) {
@@ -194,6 +198,9 @@ int dma_example(int slot_id) {
      */
 
     fsync(fd);
+    gettimeofday(&end, 0);
+    timersub(&end, &start, &diff);
+    printf("time to transfer in data: %ld.%06ld\n", (long)diff.tv_sec, (long)diff.tv_usec);
 
     pci_bar_handle_t pci_bar_handle = PCI_BAR_HANDLE_INIT;
     rc = fpga_pci_attach(0, 0, 0, 0, &pci_bar_handle);
