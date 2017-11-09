@@ -127,3 +127,10 @@ upload: checkpoints/to_aws/17_11_08-090846.Developer_CL.tar to s3://fpga-dcp/dcp
     "FpgaImageId": "afi-059a3ac79f0cecffa", 
     "FpgaImageGlobalId": "agfi-002af88b7386612b1"
 }
+
+[centos@ip-172-31-62-108 build]$ ./upload_build.sh 17_11_08-232331 512_core_csv_new_input_skipping_pipeline_fixed
+upload: checkpoints/to_aws/17_11_08-232331.Developer_CL.tar to s3://fpga-dcp/dcp/17_11_08-232331.Developer_CL.tar
+{
+    "FpgaImageId": "afi-05a01a4eb2d0ad6b9", 
+    "FpgaImageGlobalId": "agfi-08c780de4298e8938"
+}
