@@ -128,14 +128,14 @@ upload: checkpoints/to_aws/17_11_08-090846.Developer_CL.tar to s3://fpga-dcp/dcp
     "FpgaImageGlobalId": "agfi-002af88b7386612b1"
 }
 
-[centos@ip-172-31-62-108 build]$ ./upload_build.sh 17_11_08-232331 512_core_csv_new_input_skipping_pipeline_fixed
+[centos@ip-172-31-62-108 build]$ ./upload_build.sh 17_11_08-232331 512_core_csv_new_input_skipping_pipeline_fixed (16_group_32_bramWidth_1024_bit_bramLine)
 upload: checkpoints/to_aws/17_11_08-232331.Developer_CL.tar to s3://fpga-dcp/dcp/17_11_08-232331.Developer_CL.tar
 {
     "FpgaImageId": "afi-05a01a4eb2d0ad6b9", 
     "FpgaImageGlobalId": "agfi-08c780de4298e8938"
 }
 
-[centos@ip-172-31-62-108 build]$ ./upload_build.sh 17_11_09-193528 512_core_csv_2048_buffers_new_input_skipping_pipeline
+[centos@ip-172-31-62-108 build]$ ./upload_build.sh 17_11_09-193528 512_core_csv_2048_buffers_new_input_skipping_pipeline (8_group_32_bramWidth_2048_bit_bramLine)
 upload: checkpoints/to_aws/17_11_09-193528.Developer_CL.tar to s3://fpga-dcp/dcp/17_11_09-193528.Developer_CL.tar
 {
     "FpgaImageId": "afi-0d35b2672b765f856", 
