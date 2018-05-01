@@ -16,13 +16,13 @@
 
 INCLUDES = -I$(SDK_DIR)/userspace/include
 
-CC = gcc
-CFLAGS = -DCONFIG_LOGLEVEL=4 -std=gnu99 -g -Wall -Werror $(INCLUDES)
+CC = g++
+CFLAGS = -DCONFIG_LOGLEVEL=4 -std=c++11 -g -Wall -Werror $(INCLUDES)
 
 LDLIBS = -lfpga_mgmt -lrt -lpthread
 
-SRC = test_dram_dma.c
-OBJ = $(SRC:.c=.o)
+SRC = test_dram_dma.cpp
+OBJ = $(SRC:.cpp=.o)
 BIN = test_dram_dma
 
 all: check_env $(BIN)
