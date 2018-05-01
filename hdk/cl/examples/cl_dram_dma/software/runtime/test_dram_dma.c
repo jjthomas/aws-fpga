@@ -22,14 +22,13 @@
 #include <poll.h>
 #include <sys/time.h>
 #include <math.h>
+#include <assert.h>
 
 #include <fpga_pci.h>
 #include <fpga_mgmt.h>
 #include <utils/lcd.h>
 
-#include <fstream>
-
-#define NUM_WORDS_IN_LINE 16
+#define NUM_WORDS_IN_LINE 8
 #define NUM_BYTES_IN_LINE (NUM_WORDS_IN_LINE * 8)
 #define NUM_CORES 512
 
@@ -67,21 +66,23 @@ int main(int argc, char **argv) {
   slot_id = 0;
 
   int CHARS = atoi(argv[1]);
-  ifstream infile("kafka-json.txt");
-  string line;
+  FILE *fp = fopen("kafka-json.txt", "r");
+  char *line = NULL;
+  size_t len = 0;
+  ssize_t read;
 
   int chars = 0;
-  uint8_t *buf = new uint8_t[CHARS];
-  while (getline(infile, line)) {
-    if (chars + line.length() > CHARS) {
+  uint8_t *buf = (uint8_t *)malloc(CHARS * sizeof(uint8_t));
+  while ((read = getline(&line, &len, fp)) != -1) {
+    if (chars + read > CHARS) {
       break;
     }
-    memcpy(buf + chars, line.c_str(), line.length());
-    chars += line.length();
+    memcpy(buf + chars, line, read);
+    chars += read;
   }
 
-  uint8_t **buffers = new uint8_t*[NUM_CORES];
-  uint32_t *lengths = new uint32_t[NUM_CORES];
+  uint8_t **buffers = (uint8_t **)malloc(NUM_CORES * sizeof(uint8_t *));
+  uint32_t *lengths = (uint32_t *)malloc(CHARS * sizeof(uint32_t));
   for (int i = 0; i < NUM_CORES; i++) {
     buffers[i] = buf;
     lengths[i] = chars;
@@ -142,7 +143,7 @@ int dma_example(int slot_id, uint32_t num_buffers, uint8_t **buffers, uint32_t *
     int fd, rc;
     char device_file_name[256];
     char *write_buffer, *read_buffer;
-    static const int num_cores = num_buffers;
+    const int num_cores = num_buffers;
     static const int input_mem_offset = 0;
     static const int output_mem_offset = 1000000000;
     size_t input_buffer_length = 0;
@@ -193,14 +194,6 @@ int dma_example(int slot_id, uint32_t num_buffers, uint8_t **buffers, uint32_t *
 
     cache_line *cl_wb = (cache_line *)write_buffer;
     cache_line *cl_rb = (cache_line *)read_buffer;
-
-    for (int i = num_cores/4; i < num_cores/4 * (num_data_blocks + 1); i++) { 
-      for (int j = 0; j < NUM_WORDS_IN_LINE; j++) {
-        cl_wb[i].data[j] = i + j;
-        int offset = i - num_cores/4;
-        cl_rb[offset / num_data_blocks * (num_data_blocks + 1) + (offset % num_data_blocks) + 1].data[j] = i + j;
-      }
-    }
 
     for (channel = 0; channel < 4; channel++) {
       for (int i = 0; i < num_cores/4; i++) {
@@ -280,9 +273,6 @@ out:
     }
     if (read_buffer != NULL) {
         free(read_buffer);
-    }
-    if (expected_read_buffer != NULL) {
-        free(expected_read_buffer);
     }
     if (fd >= 0) {
         close(fd);
