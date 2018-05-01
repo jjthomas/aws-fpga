@@ -28,7 +28,7 @@
 #include <fpga_mgmt.h>
 #include <utils/lcd.h>
 
-#define NUM_WORDS_IN_LINE 8
+#define NUM_WORDS_IN_LINE 16
 #define NUM_BYTES_IN_LINE (NUM_WORDS_IN_LINE * 8)
 #define NUM_CORES 512
 
