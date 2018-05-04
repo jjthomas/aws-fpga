@@ -158,6 +158,8 @@ int dma_example(int slot_id, uint32_t num_buffers, uint8_t **buffers, uint32_t *
     const size_t rounded_output_buffer_length = ((size_t)ceil(input_buffer_length * max_output_expansion) +
       NUM_BYTES_IN_LINE - 1) / NUM_BYTES_IN_LINE * NUM_BYTES_IN_LINE;
     const size_t read_buffer_size = (num_cores/4) * (rounded_output_buffer_length + NUM_BYTES_IN_LINE);
+    assert(write_buffer_size < 1000000000); // only 32 bits available on FPGA for addresses
+    assert(read_buffer_size < 1000000000);
     int channel=0;
 
     read_buffer = NULL;
