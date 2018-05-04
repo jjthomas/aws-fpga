@@ -75,13 +75,23 @@ int main(int argc, char **argv) {
   size_t len = 0;
   ssize_t read;
 
-  uint32_t buf_size = sizeof(seq_confs) + sizeof(split_confs) + CHARS;
+  uint32_t buf_size = sizeof(seq_confs) / 2 * 3 + 3 + sizeof(split_confs) + 3 + CHARS;
   uint8_t *buf = (uint8_t *)malloc(buf_size * sizeof(uint8_t));
   int chars = 0;
-  memcpy(buf + chars, seq_confs, sizeof(seq_confs));
-  chars += sizeof(seq_confs);
-  memcpy(buf + chars, split_confs, sizeof(split_confs));
-  chars += sizeof(split_confs);
+  for (int i = 0; i < sizeof(seq_confs); i += 2) {
+    buf[chars] = seq_confs[i];
+    buf[chars + 1] = seq_confs[i + 1];
+    chars += 3;
+  }
+  for (int i = 0; i < 3; i++) {
+    buf[chars++] = 255; // sentinel
+  }
+  for (int i = 0; i < sizeof(split_confs); i++) {
+    buf[chars++] = split_confs[i];
+  }
+  for (int i = 0; i < 3; i++) {
+    buf[chars++] = 255; // sentinel
+  }
   while ((read = getline(&line, &len, fp)) != -1) {
     if (chars + read > buf_size) {
       break;
