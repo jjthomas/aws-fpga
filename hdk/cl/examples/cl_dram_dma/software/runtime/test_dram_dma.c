@@ -65,16 +65,25 @@ int main(int argc, char **argv) {
 
   slot_id = 0;
 
+  // extracts "ad_id" and "ad_type"
+  uint8_t seq_confs[] = {1, 34, 2, 97, 3, 100, 4, 95, 5, 105, 6, 100, 200, 34, 8, 121, 9, 112, 10, 101, 200, 34};
+  uint8_t split_confs[] = {4, 7, 116};
+
   int CHARS = atoi(argv[1]);
   FILE *fp = fopen("kafka-json.txt", "r");
   char *line = NULL;
   size_t len = 0;
   ssize_t read;
 
+  uint32_t buf_size = sizeof(seq_confs) + sizeof(split_confs) + CHARS;
+  uint8_t *buf = (uint8_t *)malloc(buf_size * sizeof(uint8_t));
   int chars = 0;
-  uint8_t *buf = (uint8_t *)malloc(CHARS * sizeof(uint8_t));
+  memcpy(buf + chars, seq_confs, sizeof(seq_confs));
+  chars += sizeof(seq_confs);
+  memcpy(buf + chars, split_confs, sizeof(split_confs));
+  chars += sizeof(split_confs);
   while ((read = getline(&line, &len, fp)) != -1) {
-    if (chars + read > CHARS) {
+    if (chars + read > buf_size) {
       break;
     }
     memcpy(buf + chars, line, read);
@@ -82,7 +91,7 @@ int main(int argc, char **argv) {
   }
 
   uint8_t **buffers = (uint8_t **)malloc(NUM_CORES * sizeof(uint8_t *));
-  uint32_t *lengths = (uint32_t *)malloc(CHARS * sizeof(uint32_t));
+  uint32_t *lengths = (uint32_t *)malloc(NUM_CORES * sizeof(uint32_t));
   for (int i = 0; i < NUM_CORES; i++) {
     buffers[i] = buf;
     lengths[i] = chars;
@@ -248,6 +257,7 @@ int dma_example(int slot_id, uint32_t num_buffers, uint8_t **buffers, uint32_t *
 
     fpga_pci_peek(pci_bar_handle, 0x600, &reg_peek);
     printf("Number of cycles for streaming: %d\n", reg_peek);
+    printf("Throughput for streaming: %.2f GBps\n", write_buffer_size / (reg_peek * 8.0));
 
     for (channel=0; channel < 4; channel++) {
       size_t read_offset = 0;
