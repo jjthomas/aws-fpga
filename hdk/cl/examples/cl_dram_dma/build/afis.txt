@@ -149,10 +149,18 @@ upload: checkpoints/to_aws/18_01_12-065509.Developer_CL.tar to s3://fpga-dcp/dcp
     "FpgaImageId": "afi-0c405933a0b82cb42", 
     "FpgaImageGlobalId": "agfi-000898dd9da895a4d"
 }
+
 [centos@ip-172-31-49-152 build]$ ./upload_build.sh 18_04_08-080615 128_unit_integer_coder_16_width
 upload: checkpoints/to_aws/18_04_08-080615.Developer_CL.tar to s3://fpga-dcp/dcp/18_04_08-080615.Developer_CL.tar
 # 1000000000L, 1000000000L), 128, 16, 16, 16, 32, 8, (coreId: Int) => new IntegerCoder(32, 4, Array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 20, 32), coreId)))
 {
     "FpgaImageId": "afi-04eeebe9c3b2cf76e", 
     "FpgaImageGlobalId": "agfi-0f7fad49962058216"
+}
+
+[centos@ip-172-31-49-152 build]$ ./upload_build.sh 18_05_03-173613 512_unit_generic_json_32_width_1024_bramLine
+upload: checkpoints/to_aws/18_05_03-173613.Developer_CL.tar to s3://fpga-dcp/dcp/18_05_03-173613.Developer_CL.tar
+{
+    "FpgaImageId": "afi-0e1ede97aec398da5", 
+    "FpgaImageGlobalId": "agfi-01466ed572f75d7a4"
 }
