@@ -172,3 +172,11 @@ upload: checkpoints/to_aws/18_05_04-233002.Developer_CL.tar to s3://fpga-dcp/dcp
     "FpgaImageId": "afi-07f7460bdc02f6b05", 
     "FpgaImageGlobalId": "agfi-0f3dd10e59b40a343"
 }
+
+[centos@ip-172-31-49-152 build]$ ./upload_build.sh 18_05_05-062329 512_unit_generic_json_32_width_1024_bramLine_2_readAhead
+upload: checkpoints/to_aws/18_05_05-062329.Developer_CL.tar to s3://fpga-dcp/dcp/18_05_05-062329.Developer_CL.tar
+# 1000000000L, 1000000000L), 512, 16, 2, 16, 32, 32, 8, (coreId: Int) => new JsonFieldExtractor.JsonFieldExtractorGeneric(200, 10, 5, coreId)))
+{
+    "FpgaImageId": "afi-08e6f0c14cab062e3", 
+    "FpgaImageGlobalId": "agfi-0ba0dfc4ee2de2e49"
+}
