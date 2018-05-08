@@ -194,3 +194,10 @@ upload: checkpoints/to_aws/18_05_07-190248.Developer_CL.tar to s3://fpga-dcp/dcp
     "FpgaImageId": "afi-0098678efb2e40600", 
     "FpgaImageGlobalId": "agfi-0d84ae86cf97fdcf2"
 }
+
+[centos@ip-172-31-49-152 build]$ ./upload_build.sh 18_05_08-092740 bandwidth_test_parameterized
+upload: checkpoints/to_aws/18_05_08-092740.Developer_CL.tar to s3://fpga-dcp/dcp/18_05_08-092740.Developer_CL.tar
+{
+    "FpgaImageId": "afi-02558b13083875f26", 
+    "FpgaImageGlobalId": "agfi-08806cb4510288347"
+}
