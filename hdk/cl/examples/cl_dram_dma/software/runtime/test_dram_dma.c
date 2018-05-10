@@ -267,8 +267,12 @@ int dma_example(int slot_id, uint32_t num_buffers, uint8_t **buffers, uint32_t *
 
     fpga_pci_peek(pci_bar_handle, 0x600, &reg_peek);
     printf("Number of cycles for streaming: %d\n", reg_peek);
-    // divide by 2.0 instead of 8.0 ns per clock since we are multiplying by 4 channels
-    printf("Throughput for streaming: %.2f GBps\n", write_buffer_size / (reg_peek * 2.0));
+
+    int total_consumed_bytes = 0;
+    for (int i = 0; i < num_buffers; i++) {
+      total_consumed_bytes += lengths[i];
+    }
+    printf("Throughput for streaming: %.2f GBps\n", total_consumed_bytes / (reg_peek * 8.0));
 
     for (channel=0; channel < 4; channel++) {
       size_t read_offset = 0;
