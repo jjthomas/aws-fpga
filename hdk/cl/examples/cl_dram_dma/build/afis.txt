@@ -218,6 +218,7 @@ upload: checkpoints/to_aws/18_05_09-193602.Developer_CL.tar to s3://fpga-dcp/dcp
 
 [centos@ip-172-31-49-152 build]$ ./upload_build.sh 18_05_10-013102 bandwidth_test_parameterized_more_fixed2
 upload: checkpoints/to_aws/18_05_10-013102.Developer_CL.tar to s3://fpga-dcp/dcp/18_05_10-013102.Developer_CL.tar
+# usage: first 64-bit word = (1L << 40) | (32768 << 8) | (3), second 64-bit word = 31-bit input length in bytes
 {
     "FpgaImageId": "afi-06ea765c3d776944a", 
     "FpgaImageGlobalId": "agfi-0d29278f40718358c"
