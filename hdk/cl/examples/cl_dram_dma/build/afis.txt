@@ -280,3 +280,11 @@ upload: checkpoints/to_aws/18_05_29-054211.Developer_CL.tar to s3://fpga-dcp/dcp
     "FpgaImageId": "afi-02efb9c320ca73540", 
     "FpgaImageGlobalId": "agfi-0cad77d4d0fc65f51"
 }
+
+[centos@ip-172-31-49-152 build]$ ./upload_build.sh 18_06_04-043123 376_unit_gbdt_32_width_1024_bramLine_16_io_group_2_readAhead (should be 384_unit)
+upload: checkpoints/to_aws/18_06_04-043123.Developer_CL.tar to s3://fpga-dcp/dcp/18_06_04-043123.Developer_CL.tar
+# 1000000000L, 1000000000L), 384, 16, 2, 16, 32, 32, (coreId: Int) => new GBDT(100, 25, 1000, 4, coreId: Int)))
+{
+    "FpgaImageId": "afi-0e4f73009b571b4a1", 
+    "FpgaImageGlobalId": "agfi-0275e2e84388e0801"
+}
