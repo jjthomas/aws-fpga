@@ -296,3 +296,11 @@ upload: checkpoints/to_aws/18_06_30-084127.Developer_CL.tar to s3://fpga-dcp/dcp
     "FpgaImageId": "afi-055aedcd90072bdbb", 
     "FpgaImageGlobalId": "agfi-041cfb3c4149b081f"
 }
+
+[centos@ip-172-31-49-152 build]$ ./upload_build.sh 18_07_06-001246 704_unit_regex_32_width_1024_bramLine_16_io_group_2_readAhead
+upload: checkpoints/to_aws/18_07_06-001246.Developer_CL.tar to s3://fpga-dcp/dcp/18_07_06-001246.Developer_CL.tar
+# bram_fifo: 6ceb59a0 (email regex in comments in Launcher)
+{
+    "FpgaImageId": "afi-04d734cc2d24f1558", 
+    "FpgaImageGlobalId": "agfi-0992e863e1b3c168c"
+}
