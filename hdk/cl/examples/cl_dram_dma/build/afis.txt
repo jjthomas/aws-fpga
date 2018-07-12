@@ -304,3 +304,11 @@ upload: checkpoints/to_aws/18_07_06-001246.Developer_CL.tar to s3://fpga-dcp/dcp
     "FpgaImageId": "afi-04d734cc2d24f1558", 
     "FpgaImageGlobalId": "agfi-0992e863e1b3c168c"
 }
+
+[centos@ip-172-31-49-152 build]$ ./upload_build.sh 18_07_12-091435 320_unit_bloom_32_width_1024_bramLine_16_io_group_2_readAhead
+upload: checkpoints/to_aws/18_07_12-091435.Developer_CL.tar to s3://fpga-dcp/dcp/18_07_12-091435.Developer_CL.tar
+# 1000000000L, 1000000000L), 320, 16, 2, 16, 32, 32, (coreId: Int) => new BloomFilter(3072, 100, 4096, 8, 1, 0, coreId)))
+{
+    "FpgaImageId": "afi-068c39355a678ede9", 
+    "FpgaImageGlobalId": "agfi-0821c60fa4028fd64"
+}
