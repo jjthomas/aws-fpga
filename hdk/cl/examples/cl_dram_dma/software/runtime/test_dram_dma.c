@@ -104,7 +104,7 @@ int main(int argc, char **argv) {
   uint32_t *lengths = (uint32_t *)malloc(NUM_CORES * sizeof(uint32_t));
   for (int i = 0; i < NUM_CORES; i++) {
     buffers[i] = buf;
-    lengths[i] = chars;
+    lengths[i] = chars / 4 * 4;
   }
 
   rc = dma_example(slot_id, NUM_CORES, buffers, lengths, 1.0);
