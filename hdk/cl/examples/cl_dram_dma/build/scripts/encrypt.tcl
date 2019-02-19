@@ -50,7 +50,7 @@ file copy -force $CL_DIR/design/cl_dma_pcis_slv.sv                 $TARGET_DIR
 file copy -force $CL_DIR/design/cl_ila.sv                          $TARGET_DIR
 file copy -force $CL_DIR/design/cl_ocl_slv.sv                      $TARGET_DIR 
 file copy -force $CL_DIR/design/cl_sda_slv.sv                      $TARGET_DIR
-file copy -force $CL_DIR/design/sw.sv                              $TARGET_DIR
+# file copy -force $CL_DIR/design/sw.sv                              $TARGET_DIR
 file copy -force $UNUSED_TEMPLATES_DIR/unused_sh_bar1_template.inc $TARGET_DIR
 
 #---- End of section replaced by Developr ---
@@ -62,8 +62,8 @@ file copy -force $UNUSED_TEMPLATES_DIR/unused_sh_bar1_template.inc $TARGET_DIR
 exec chmod +w {*}[glob $TARGET_DIR/*]
 
 # encrypt .v/.sv/.vh/inc as verilog files
-encrypt -k $HDK_SHELL_DIR/build/scripts/vivado_keyfile.txt -lang verilog  [glob -nocomplain -- $TARGET_DIR/*.{v,sv}] [glob -nocomplain -- $TARGET_DIR/*.vh] [glob -nocomplain -- $TARGET_DIR/*.inc]
+# encrypt -k $HDK_SHELL_DIR/build/scripts/vivado_keyfile.txt -lang verilog  [glob -nocomplain -- $TARGET_DIR/*.{v,sv}] [glob -nocomplain -- $TARGET_DIR/*.vh] [glob -nocomplain -- $TARGET_DIR/*.inc]
 
 # encrypt *vhdl files
-encrypt -k $HDK_SHELL_DIR/build/scripts/vivado_vhdl_keyfile.txt -lang vhdl -quiet [ glob -nocomplain -- $TARGET_DIR/*.vhd? ]
+# encrypt -k $HDK_SHELL_DIR/build/scripts/vivado_vhdl_keyfile.txt -lang vhdl -quiet [ glob -nocomplain -- $TARGET_DIR/*.vhd? ]
 

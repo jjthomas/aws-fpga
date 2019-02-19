@@ -260,56 +260,56 @@ if {$implement} {
       }
    }
 
-   ########################
-   # CL Place
-   ########################
-   if {$place} {
-      puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - Running placement";
-      if {$psip} {
-         append place_options " -fanout_opt"
-      }
-      impl_step place_design $TOP $place_options $place_directive $place_preHookTcl $place_postHookTcl
-   }
-
-   ##############################
-   # CL Post-Place Optimization
-   ##############################
-   if {$phys_opt} {
-      puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - Running post-place optimization";
-      impl_step phys_opt_design $TOP $phys_options $phys_directive $phys_preHookTcl $phys_postHookTcl
-   }
-
-   ########################
-   # CL Route
-   ########################
-   if {$route} {
-      puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - Routing design";
-      impl_step route_design $TOP $route_options $route_directive $route_preHookTcl $route_postHookTcl
-   }
-
-   ##############################
-   # CL Post-Route Optimization
-   ##############################
-   set SLACK [get_property SLACK [get_timing_paths]]
-   #Post-route phys_opt will not be run if slack is positive or greater than -200ps.
-   if {$route_phys_opt && $SLACK > -0.400 && $SLACK < 0} {
-      puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - Running post-route optimization";
-      impl_step route_phys_opt_design $TOP $post_phys_options $post_phys_directive $post_phys_preHookTcl $post_phys_postHookTcl
-   }
-
-   ##############################
-   # Final Implmentation Steps
-   ##############################
-   # Report final timing
-   report_timing_summary -file $CL_DIR/build/reports/${timestamp}.SH_CL_final_timing_summary.rpt
-
-   # This is what will deliver to AWS
-   puts "AWS FPGA: ([clock format [clock seconds] -format %T]) - Writing final DCP to to_aws directory.";
-
-   write_checkpoint -force $CL_DIR/build/checkpoints/to_aws/${timestamp}.SH_CL_routed.dcp
-
-   # Generate debug probes file
-   write_debug_probes -force -no_partial_ltxfile -file $CL_DIR/build/checkpoints/${timestamp}.debug_probes.ltx
+#   ########################
+#   # CL Place
+#   ########################
+#   if {$place} {
+#      puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - Running placement";
+#      if {$psip} {
+#         append place_options " -fanout_opt"
+#      }
+#      impl_step place_design $TOP $place_options $place_directive $place_preHookTcl $place_postHookTcl
+#   }
+#
+#   ##############################
+#   # CL Post-Place Optimization
+#   ##############################
+#   if {$phys_opt} {
+#      puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - Running post-place optimization";
+#      impl_step phys_opt_design $TOP $phys_options $phys_directive $phys_preHookTcl $phys_postHookTcl
+#   }
+#
+#   ########################
+#   # CL Route
+#   ########################
+#   if {$route} {
+#      puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - Routing design";
+#      impl_step route_design $TOP $route_options $route_directive $route_preHookTcl $route_postHookTcl
+#   }
+#
+#   ##############################
+#   # CL Post-Route Optimization
+#   ##############################
+#   set SLACK [get_property SLACK [get_timing_paths]]
+#   #Post-route phys_opt will not be run if slack is positive or greater than -200ps.
+#   if {$route_phys_opt && $SLACK > -0.400 && $SLACK < 0} {
+#      puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - Running post-route optimization";
+#      impl_step route_phys_opt_design $TOP $post_phys_options $post_phys_directive $post_phys_preHookTcl $post_phys_postHookTcl
+#   }
+#
+#   ##############################
+#   # Final Implmentation Steps
+#   ##############################
+#   # Report final timing
+#   report_timing_summary -file $CL_DIR/build/reports/${timestamp}.SH_CL_final_timing_summary.rpt
+#
+#   # This is what will deliver to AWS
+#   puts "AWS FPGA: ([clock format [clock seconds] -format %T]) - Writing final DCP to to_aws directory.";
+#
+#   write_checkpoint -force $CL_DIR/build/checkpoints/to_aws/${timestamp}.SH_CL_routed.dcp
+#
+#   # Generate debug probes file
+#   write_debug_probes -force -no_partial_ltxfile -file $CL_DIR/build/checkpoints/${timestamp}.debug_probes.ltx
 
    close_project
 }
@@ -320,39 +320,39 @@ if {$implement} {
 
 # Create a zipped tar file, that would be used for createFpgaImage EC2 API
 
-puts "AWS FPGA: ([clock format [clock seconds] -format %T]) - Compress files for sending to AWS. "
-
-# Create manifest file
-set manifest_file [open "$CL_DIR/build/checkpoints/to_aws/${timestamp}.manifest.txt" w]
-set hash [lindex [split [exec sha256sum $CL_DIR/build/checkpoints/to_aws/${timestamp}.SH_CL_routed.dcp] ] 0]
-
-puts $manifest_file "manifest_format_version=1\n"
-puts $manifest_file "pci_vendor_id=$vendor_id\n"
-puts $manifest_file "pci_device_id=$device_id\n"
-puts $manifest_file "pci_subsystem_id=$subsystem_id\n"
-puts $manifest_file "pci_subsystem_vendor_id=$subsystem_vendor_id\n"
-puts $manifest_file "dcp_hash=$hash\n"
-puts $manifest_file "shell_version=$shell_version\n"
-puts $manifest_file "dcp_file_name=${timestamp}.SH_CL_routed.dcp\n"
-puts $manifest_file "hdk_version=$hdk_version\n"
-puts $manifest_file "date=$timestamp\n"
-puts $manifest_file "clock_recipe_a=$clock_recipe_a\n"
-puts $manifest_file "clock_recipe_b=$clock_recipe_b\n"
-puts $manifest_file "clock_recipe_c=$clock_recipe_c\n"
-
-close $manifest_file
-
-# Delete old tar file with same name
-if { [file exists $CL_DIR/build/checkpoints/to_aws/${timestamp}.Developer_CL.tar] } {
-        puts "Deleting old tar file with same name.";
-        file delete -force $CL_DIR/build/checkpoints/to_aws/${timestamp}.Developer_CL.tar
-}
-
-# Tar checkpoint to aws
-cd $CL_DIR/build/checkpoints
-tar::create to_aws/${timestamp}.Developer_CL.tar [glob to_aws/${timestamp}*]
-
-puts "AWS FPGA: ([clock format [clock seconds] -format %T]) - Finished creating final tar file in to_aws directory.";
+# puts "AWS FPGA: ([clock format [clock seconds] -format %T]) - Compress files for sending to AWS. "
+# 
+# # Create manifest file
+# set manifest_file [open "$CL_DIR/build/checkpoints/to_aws/${timestamp}.manifest.txt" w]
+# set hash [lindex [split [exec sha256sum $CL_DIR/build/checkpoints/to_aws/${timestamp}.SH_CL_routed.dcp] ] 0]
+# 
+# puts $manifest_file "manifest_format_version=1\n"
+# puts $manifest_file "pci_vendor_id=$vendor_id\n"
+# puts $manifest_file "pci_device_id=$device_id\n"
+# puts $manifest_file "pci_subsystem_id=$subsystem_id\n"
+# puts $manifest_file "pci_subsystem_vendor_id=$subsystem_vendor_id\n"
+# puts $manifest_file "dcp_hash=$hash\n"
+# puts $manifest_file "shell_version=$shell_version\n"
+# puts $manifest_file "dcp_file_name=${timestamp}.SH_CL_routed.dcp\n"
+# puts $manifest_file "hdk_version=$hdk_version\n"
+# puts $manifest_file "date=$timestamp\n"
+# puts $manifest_file "clock_recipe_a=$clock_recipe_a\n"
+# puts $manifest_file "clock_recipe_b=$clock_recipe_b\n"
+# puts $manifest_file "clock_recipe_c=$clock_recipe_c\n"
+# 
+# close $manifest_file
+# 
+# # Delete old tar file with same name
+# if { [file exists $CL_DIR/build/checkpoints/to_aws/${timestamp}.Developer_CL.tar] } {
+#         puts "Deleting old tar file with same name.";
+#         file delete -force $CL_DIR/build/checkpoints/to_aws/${timestamp}.Developer_CL.tar
+# }
+# 
+# # Tar checkpoint to aws
+# cd $CL_DIR/build/checkpoints
+# tar::create to_aws/${timestamp}.Developer_CL.tar [glob to_aws/${timestamp}*]
+# 
+# puts "AWS FPGA: ([clock format [clock seconds] -format %T]) - Finished creating final tar file in to_aws directory.";
 
 if {[string compare $notify_via_sns "1"] == 0} {
   puts "AWS FPGA: ([clock format [clock seconds] -format %T]) - Calling notification script to send e-mail to $env(EMAIL)";

@@ -34,6 +34,7 @@ puts "AWS FPGA: Reading AWS Shell design";
 
 #Read AWS Design files
 read_verilog [ list \
+  $CL_DIR/design/sw.sv \
   $HDK_SHELL_DESIGN_DIR/lib/lib_pipe.sv \
   $HDK_SHELL_DESIGN_DIR/lib/bram_2rw.sv \
   $HDK_SHELL_DESIGN_DIR/lib/flop_fifo.sv \
