@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Amazon FPGA Hardware Development Kit
 #
@@ -84,5 +84,39 @@ cp $ddr4_imports_dir/ddr4_dir_detect.sv          $ddr4_rdimm_model_dir/
 cp $ddr4_imports_dir/ddr4_rank.sv                $ddr4_rdimm_model_dir/
 cp $ddr4_imports_dir/ddr4_rcd_model.sv           $ddr4_rdimm_model_dir/
 cp $ddr4_imports_dir/ddr4_rdimm_wrapper.sv       $ddr4_rdimm_model_dir/
+
+
+echo "patching ddr4_rdimm_wrapper.sv file"
+sed -i s/_4G/_8G/g  $ddr4_rdimm_model_dir/ddr4_rdimm_wrapper.sv
+sed -i -e 's/\/\/\LRDIMM/\: LRDIMM/g' $ddr4_rdimm_model_dir/ddr4_rdimm_wrapper.sv
+sed -i -e 's/\/\/\!LRDIMM/\: NOT_LRDIMM/g' $ddr4_rdimm_model_dir/ddr4_rdimm_wrapper.sv
+
+echo "patching ddr4_sdram_model_wrapper.sv file"
+sed -i '/`include "arch_package.sv"/d' $ddr4_model_dir/ddr4_sdram_model_wrapper.sv
+sed -i '/`include "proj_package.sv"/d' $ddr4_model_dir/ddr4_sdram_model_wrapper.sv
+sed -i '/`include "interface.sv"/d' $ddr4_model_dir/ddr4_sdram_model_wrapper.sv
+sed -i '/`include "ddr4_model.sv"/d' $ddr4_model_dir/ddr4_sdram_model_wrapper.sv
+
+echo "\`include \"arch_package.sv\"" >> $ddr4_model_dir/ddr4_sdram_model_wrapper.sv
+echo "\`include \"proj_package.sv\"" >> $ddr4_model_dir/ddr4_sdram_model_wrapper.sv
+echo "\`include \"interface.sv\"" >> $ddr4_model_dir/ddr4_sdram_model_wrapper.sv
+echo "\`include \"ddr4_model.sv\"" >> $ddr4_model_dir/ddr4_sdram_model_wrapper.sv
+
+echo "patching interface.sv file"
+sed -i '/`include "ddr4_sdram_model_wrapper.sv"/d' $ddr4_model_dir/interface.sv
+sed -i '2i`ifndef DDR4_INT_DEF' $ddr4_model_dir/interface.sv
+sed -i '3i  `define DDR4_INT_DEF' $ddr4_model_dir/interface.sv
+sed -i '$a`endif' $ddr4_model_dir/interface.sv
+
+echo "patching proj_package.sv file"
+sed -i '/`include "ddr4_sdram_model_wrapper.sv"/d' $ddr4_model_dir/proj_package.sv
+sed -i '2i`ifndef DDR4_PROJ_PKG' $ddr4_model_dir/proj_package.sv
+sed -i '3i  `define DDR4_PROJ_PKG' $ddr4_model_dir/proj_package.sv
+sed -i '$a`endif' $ddr4_model_dir/proj_package.sv
+
+echo "patching ddr4_model.sv file"
+sed -i '1i`ifndef DDR4_MODEL_DEF' $ddr4_model_dir/ddr4_model.sv
+sed -i '2i `define DDR4_MODEL_DEF' $ddr4_model_dir/ddr4_model.sv
+sed -i '$a`endif' $ddr4_model_dir/ddr4_model.sv
 
 rm -f $lockfile_filename

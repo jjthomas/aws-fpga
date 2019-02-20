@@ -32,10 +32,11 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/fs.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 #include <linux/semaphore.h>
 #include <linux/cdev.h>
 #include <linux/spinlock.h>
+#include <linux/mutex.h>
 #include <linux/vmalloc.h>
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
@@ -51,10 +52,9 @@
 #define EVENT_DEVICE_NAME "fpga"
 #define SLEEP_MINIMUM_USEC 		(1 * 100)
 #define SLEEP_MAXIMUM_USEC 		(4 * 100)
-#define MAX_NUMBER_OF_EDMA_DEVICE 	(16)
-#define MAX_NUMBER_OF_EDMA_QUEUES 	(4)
-//TODO: move to a mutable and unite across
-#define MAX_NUMBER_OF_USER_INTERRUPTS 	(16)
+#define RELEASE_SLEEP_MSEC 		(5)
+#define RELEASE_TIMEOUT_MSEC 		(((fsync_timeout_sec) + 1) * 1000)
+#define NUM_POLLS_PER_SCHED		(100)
 #define CEIL(a, b)	(((a) + (b-1)) / (b))
 
 extern struct class* edma_class;
@@ -66,6 +66,7 @@ struct edma_char_queue_device{
 	struct pci_dev *pdev;
 	struct edma_queue_private_data *device_private_data;
 	u32 major;
+	u32 fpga_number;
 };
 
 struct edma_char_event_device{
@@ -77,17 +78,26 @@ struct edma_char_event_device{
 };
 
 
-static int transient_buffer_size = 32 * 1024 * 1024;
-module_param(transient_buffer_size, int, 0);
+static unsigned int transient_buffer_size = 32 * 1024 * 1024;
+module_param(transient_buffer_size, uint, 0);
 MODULE_PARM_DESC(transient_buffer_size, "Transient buffer size. (default=32MB)");
 
-static int single_transaction_size = 8 * PAGE_SIZE;
-module_param(single_transaction_size, int, 0);
+static unsigned int single_transaction_size = 8 * PAGE_SIZE;
+module_param(single_transaction_size, uint, 0);
 MODULE_PARM_DESC(single_transaction_size, "The size of a single transaction over the DMA. (default=32KB)");
 
-extern int edma_queue_depth;
+unsigned int edma_queue_depth = 1024;
+module_param(edma_queue_depth, uint, 0);
+MODULE_PARM_DESC(edma_queue_depth, "EDMA queue depth. (default=1024)");
+
+static unsigned int fsync_timeout_sec = 9;
+module_param(fsync_timeout_sec, uint, 0);
+MODULE_PARM_DESC(fsync_timeout_sec, "fsync timeout sec. (default=9)");
 
 //TODO: add a callback for the backend to notify fatal error - reset
+
+static DECLARE_BITMAP(edma_fpga_alloc_bitmap, MAX_NUMBER_OF_EDMA_DEVICE);
+static DEFINE_SPINLOCK(edma_fpga_alloc_lock);
 
 static inline bool is_releasing(void* state)
 {
@@ -101,7 +111,7 @@ static inline bool is_releasing(void* state)
 }
 
 
-static inline int wait_is_fsync_running(struct edma_queue_private_data* private_data, spinlock_t* spinlock)
+static inline int wait_is_fsync_running(struct edma_queue_private_data* private_data, struct mutex* mutex)
 {
 	if(unlikely(test_bit(EDMA_STATE_FSYNC_IN_PROGRESS_BIT, &private_data->state))) {
 		//Wait and if fsync still running - return
@@ -111,9 +121,9 @@ static inline int wait_is_fsync_running(struct edma_queue_private_data* private_
 		private_data->stats.fsync_busy_count++;
 		u64_stats_update_end(&private_data->stats.syncp);
 
-		spin_unlock(spinlock);
+		mutex_unlock(mutex);
 		usleep_range(SLEEP_MINIMUM_USEC, SLEEP_MAXIMUM_USEC);
-		spin_lock(spinlock);
+		mutex_lock(mutex);
 
 		if(unlikely(test_bit(EDMA_STATE_FSYNC_IN_PROGRESS_BIT, &private_data->state)))
 			return -EBUSY;
@@ -232,7 +242,7 @@ static inline int edma_dev_allocate_resources( struct edma_buffer_control_struct
 	ebcs->completed_buffer = NULL;
 	ebcs->completed_size = 0;
 
-	spin_lock_init(&ebcs->ebcs_spin_lock);
+	mutex_init(&ebcs->ebcs_mutex);
 
 	goto edma_dev_allocate_resources_done;
 
@@ -309,7 +319,7 @@ static int edma_dev_open(struct inode *inode, struct file *filp)
 	edma_char = container_of(inode->i_cdev, struct edma_char_queue_device, cdev);
 	device_private_data = &(edma_char->device_private_data[MINOR(inode->i_rdev)]);
 
-	spin_lock(&device_private_data->edma_spin_lock);
+	mutex_lock(&device_private_data->edma_mutex);
 	filp->private_data = device_private_data;
 
 	if(device_private_data->stats.opened_times == 0) {
@@ -338,7 +348,7 @@ static int edma_dev_open(struct inode *inode, struct file *filp)
 	u64_stats_update_end(&device_private_data->stats.syncp);
 
 edma_open_done:
-	spin_unlock(&device_private_data->edma_spin_lock);
+	mutex_unlock(&device_private_data->edma_mutex);
 
 	edma_dbg("\n-->%s Done\n", __func__);
 
@@ -349,6 +359,7 @@ edma_open_done:
 static int edma_dev_release(struct inode *inode, struct file *file)
 {
 	int ret = 0;
+	int timeout = 0;
 	struct edma_char_queue_device* edma_char;
 	struct edma_queue_private_data *device_private_data;
 
@@ -360,7 +371,7 @@ static int edma_dev_release(struct inode *inode, struct file *file)
 
 	BUG_ON(!file->private_data);
 
-	spin_lock(&device_private_data->edma_spin_lock);
+	mutex_lock(&device_private_data->edma_mutex);
 
 	BUG_ON(device_private_data->stats.opened_times < 1);
 
@@ -373,22 +384,36 @@ static int edma_dev_release(struct inode *inode, struct file *file)
 		/* Get both read and write lock and update status to releasing.
 		* This makes sure that outstanding read/write transactions will finish and
 		* new will not start. Only open() will unset the RELEASING state. */
-		spin_lock(&device_private_data->write_ebcs.ebcs_spin_lock);
-		spin_lock(&device_private_data->read_ebcs.ebcs_spin_lock);
+		mutex_lock(&device_private_data->write_ebcs.ebcs_mutex);
+		mutex_lock(&device_private_data->read_ebcs.ebcs_mutex);
 
-		// !!! Super important that for every spinlock of ebcs (read and write) check for releasing status !!!
+		// !!! Super important that for every lock of ebcs (read and write) check for releasing status !!!
 
 		set_bit(EDMA_STATE_QUEUE_RELEASING_BIT, &device_private_data->state);
 
-		if(test_bit(EDMA_STATE_READ_IN_PROGRESS_BIT,
+		// Now that we signaled to the other threads that we want to release
+		// we can unlock the locks
+		// the code in the read/write/fsync function should always check the 
+		// EDMA_STATE_QUEUE_RELEASING_BIT often to stop quickly
+		mutex_unlock(&device_private_data->read_ebcs.ebcs_mutex);
+		mutex_unlock(&device_private_data->write_ebcs.ebcs_mutex);
+
+		while (test_bit(EDMA_STATE_READ_IN_PROGRESS_BIT,
 				&device_private_data->state)
 				|| test_bit(EDMA_STATE_WRITE_IN_PROGRESS_BIT,
 						&device_private_data->state)
 				|| test_bit(EDMA_STATE_FSYNC_IN_PROGRESS_BIT,
-						&device_private_data->state))
-			msleep(SLEEP_MAXIMUM_USEC);
+						&device_private_data->state)) {
+			msleep(RELEASE_SLEEP_MSEC);
+			if (timeout > RELEASE_TIMEOUT_MSEC) {
+				pr_err("%s: DMA still in-progress, timeout=%u\n", 
+						__func__, timeout);
+				break;
+			}
+			timeout += RELEASE_SLEEP_MSEC;
+		}
 
-		//if still running - panic
+		// if still running - panic
 		BUG_ON( test_bit(EDMA_STATE_READ_IN_PROGRESS_BIT,
 				&device_private_data->state)
 				|| test_bit(EDMA_STATE_WRITE_IN_PROGRESS_BIT,
@@ -396,16 +421,7 @@ static int edma_dev_release(struct inode *inode, struct file *file)
 				|| test_bit(EDMA_STATE_FSYNC_IN_PROGRESS_BIT,
 						&device_private_data->state));
 
-		spin_unlock(&device_private_data->read_ebcs.ebcs_spin_lock);
-		spin_unlock(&device_private_data->write_ebcs.ebcs_spin_lock);
-
-		// First, set the DEV_RELEASING flag so all other tasks are notified
-		// disable hardware interrupts (note - we could still have interrupts inflight or interrupt routine in execution
-		// wait_on interrupt_routine test_bit(INT_RUNNING) - wait for X seconds
-		// disassociate MSIX with an interrupt routine
-
-		// once we reached here, we know that we can release
-
+		// Once we reach this point, we know that we can release
 		edma_backend_stop(device_private_data->write_ebcs.dma_queue_handle);
 
 		edma_dev_release_resources(&device_private_data->write_ebcs);
@@ -414,7 +430,7 @@ static int edma_dev_release(struct inode *inode, struct file *file)
 		file->private_data = NULL;
 	}
 
-	spin_unlock(&device_private_data->edma_spin_lock);
+	mutex_unlock(&device_private_data->edma_mutex);
 
 	edma_dbg("\n-->%s Done\n", __func__);
 
@@ -441,7 +457,7 @@ static ssize_t edma_dev_read(struct file *filp, char *buffer, size_t len,
 	edma_dbg("\n-->%s Reading %zu bytes from %s in offset 0x%llx\n", __func__, len, filp->f_path.dentry->d_name.name, *off);
 
 	read_ebcs = &private_data->read_ebcs;
-	spin_lock(&read_ebcs->ebcs_spin_lock);
+	mutex_lock(&read_ebcs->ebcs_mutex);
 
 	u64_stats_update_begin(&private_data->stats.syncp);
 	private_data->stats.read_requests++;
@@ -475,7 +491,7 @@ static ssize_t edma_dev_read(struct file *filp, char *buffer, size_t len,
 				u64_stats_update_end(&private_data->stats.syncp);
 			}
 
-			pr_err("Read failed\n (%d)\n", ret);
+			pr_err("%s: read failed (%d)\n", __func__, ret);
 			goto edma_dev_read_done;
 		}
 
@@ -556,7 +572,7 @@ static ssize_t edma_dev_read(struct file *filp, char *buffer, size_t len,
 					private_data->stats.read_timeouts_error++;
 					u64_stats_update_end(&private_data->stats.syncp);
 
-					pr_err("Read failed\n (%d)\n", ret);
+					pr_err("%s: read failed (%d)\n", __func__, ret);
 					goto edma_dev_read_done;
 				}
 
@@ -616,7 +632,7 @@ static ssize_t edma_dev_read(struct file *filp, char *buffer, size_t len,
 
 edma_dev_read_done:
 	clear_bit(EDMA_STATE_READ_IN_PROGRESS_BIT,&private_data->state);
-	spin_unlock(&read_ebcs->ebcs_spin_lock);
+	mutex_unlock(&read_ebcs->ebcs_mutex);
 
 	edma_dbg("\n-->%s Done\n", __func__);
 
@@ -641,7 +657,7 @@ static ssize_t edma_dev_write(struct file *filp, const char *buff, size_t len,
 	edma_dbg("\n--> %s Writing %zu bytes to %s in offset 0x%llx\n", __func__, len, filp->f_path.dentry->d_name.name, *off);
 
 	write_ebcs = &private_data->write_ebcs;
-	spin_lock(&write_ebcs->ebcs_spin_lock);
+	mutex_lock(&write_ebcs->ebcs_mutex);
 
 	if(is_releasing(&((struct edma_queue_private_data*)filp->private_data)->state))
 		goto edma_dev_write_done;
@@ -651,7 +667,7 @@ static ssize_t edma_dev_write(struct file *filp, const char *buff, size_t len,
 
 	set_bit(EDMA_STATE_WRITE_IN_PROGRESS_BIT, &private_data->state);
 
-	ret = wait_is_fsync_running(private_data, &write_ebcs->ebcs_spin_lock);
+	ret = wait_is_fsync_running(private_data, &write_ebcs->ebcs_mutex);
 	if(unlikely(ret))
 		goto edma_dev_write_done;
 
@@ -672,9 +688,9 @@ static ssize_t edma_dev_write(struct file *filp, const char *buff, size_t len,
 			u64_stats_update_end(&private_data->stats.syncp);
 
 			//wait for write to be processed
-			spin_unlock(&write_ebcs->ebcs_spin_lock);
+			mutex_unlock(&write_ebcs->ebcs_mutex);
 			usleep_range(SLEEP_MINIMUM_USEC, SLEEP_MAXIMUM_USEC);
-			spin_lock(&write_ebcs->ebcs_spin_lock);
+			mutex_lock(&write_ebcs->ebcs_mutex);
 
 			//if releasing no need to wait
 			if(unlikely(is_releasing(&private_data->state)))
@@ -718,16 +734,16 @@ static ssize_t edma_dev_write(struct file *filp, const char *buff, size_t len,
 			private_data->stats.dma_submit_error++;
 			u64_stats_update_end(&private_data->stats.syncp);
 
-			spin_unlock(&write_ebcs->ebcs_spin_lock);
+			mutex_unlock(&write_ebcs->ebcs_mutex);
 			usleep_range(SLEEP_MINIMUM_USEC, SLEEP_MAXIMUM_USEC);
-			spin_lock(&write_ebcs->ebcs_spin_lock);
+			mutex_lock(&write_ebcs->ebcs_mutex);
 
 			//if releasing no need to wait
 			if(unlikely(is_releasing(&private_data->state)))
 				goto edma_dev_write_done;
 
 			//if now fsync is running we should wait...
-			ret = wait_is_fsync_running(private_data, &write_ebcs->ebcs_spin_lock);
+			ret = wait_is_fsync_running(private_data, &write_ebcs->ebcs_mutex);
 			if(unlikely(ret))
 				goto edma_dev_write_done;
 			if(edma_backend_submit_m2s_request((u64*)request->phys_data, copy_to_rquest_size, write_ebcs->dma_queue_handle, *off)) {
@@ -762,7 +778,7 @@ edma_dev_write_done:
 
 	clear_bit(EDMA_STATE_WRITE_IN_PROGRESS_BIT, &private_data->state);
 
-	spin_unlock(&write_ebcs->ebcs_spin_lock);
+	mutex_unlock(&write_ebcs->ebcs_mutex);
 
 	edma_dbg("\n--> %s done. RetVal is %zd\n", __func__, (data_copied == 0 ? ret : data_copied));
 
@@ -806,6 +822,8 @@ static int edma_dev_fsync(struct file *filp, loff_t start, loff_t end, int datas
 	bool ebcs_is_clean = false;
 	struct edma_buffer_control_structure* write_ebcs;
 	struct edma_queue_private_data* private_data = (struct edma_queue_private_data*)filp->private_data;
+	u32 sched_limit = 1;
+	unsigned long timeout;
 
 	(void)start;
 	(void)end;
@@ -820,12 +838,14 @@ static int edma_dev_fsync(struct file *filp, loff_t start, loff_t end, int datas
 	edma_dbg("\n--> %s Fsyncing %s \n", __func__, filp->f_path.dentry->d_name.name);
 
 	write_ebcs = &private_data->write_ebcs;
-	spin_lock(&write_ebcs->ebcs_spin_lock);
+	mutex_lock(&write_ebcs->ebcs_mutex);
 
 	if(unlikely(is_releasing(&private_data->state)))
 		goto edma_dev_fsync_done;
 
 	set_bit(EDMA_STATE_FSYNC_IN_PROGRESS_BIT, &private_data->state);
+
+        timeout = jiffies + (fsync_timeout_sec * HZ);
 
 	while(!ebcs_is_clean)
 	{
@@ -835,9 +855,21 @@ static int edma_dev_fsync(struct file *filp, loff_t start, loff_t end, int datas
 				== write_ebcs->next_to_use)
 			ebcs_is_clean = true;
 		else {
-			spin_unlock(&write_ebcs->ebcs_spin_lock);
-			usleep_range(SLEEP_MINIMUM_USEC, SLEEP_MAXIMUM_USEC);
-			spin_lock(&write_ebcs->ebcs_spin_lock);
+			if (time_after(jiffies, timeout)) {
+				pr_err("%s: timeout occurred, fsync_timeout_sec=%u\n", 
+					__func__, fsync_timeout_sec);
+				ret = -EIO;
+				goto edma_dev_fsync_done;
+			}
+
+			mutex_unlock(&write_ebcs->ebcs_mutex);
+
+			if ((sched_limit % NUM_POLLS_PER_SCHED) == 0) {
+				schedule();
+			}
+			sched_limit++;
+
+			mutex_lock(&write_ebcs->ebcs_mutex);
 
 			if(unlikely(is_releasing(&private_data->state)))
 				goto edma_dev_fsync_done;
@@ -847,7 +879,7 @@ static int edma_dev_fsync(struct file *filp, loff_t start, loff_t end, int datas
 edma_dev_fsync_done:
 	clear_bit(EDMA_STATE_FSYNC_IN_PROGRESS_BIT, &private_data->state);
 
-	spin_unlock(&write_ebcs->ebcs_spin_lock);
+	mutex_unlock(&write_ebcs->ebcs_mutex);
 
 	edma_dbg("\n--> %s done.\n", __func__);
 
@@ -864,10 +896,6 @@ static struct file_operations queue_fops = {
 		.llseek = edma_dev_llseek,
 #endif
 		.owner = THIS_MODULE
-#if 0
-		.readv = edma_dev_readv,
-		.writev = edma_dev_writev
-#endif
 };
 
 irqreturn_t edma_dev_irq_handler(int irq, void *dev)
@@ -984,16 +1012,18 @@ static ssize_t print_queue_stats(struct device* dev, struct device_attribute* at
 	device_private_data = (struct edma_queue_private_data *)dev_get_drvdata(dev);
 
 	if(!device_private_data)
-		char_count = sprintf(buf, "No Statistics available. The device is not in use.");
+		char_count = scnprintf(buf, PAGE_SIZE, 
+			"No Statistics available. The device is not in use.");
 
 	else
-		char_count = sprintf(buf,
+		char_count = scnprintf(buf, PAGE_SIZE,
 				"read_requests_submitted - %llu\n"
 				"read_requests_completed - %llu\n"
 				"write_requests_submitted - %llu\n"
 				"write_requests_completed - %llu\n"
 				"fsync_count - %llu\n"
 				"no_space_left_error - %llu\n"
+				"dma_submit_error - %llu\n"
 				"fsync_busy_count - %llu\n"
 				"read_timeouts_error - %llu\n"
 				"opened_times - %llu\n",
@@ -1003,6 +1033,7 @@ static ssize_t print_queue_stats(struct device* dev, struct device_attribute* at
 				device_private_data[MINOR(dev->devt)].stats.write_completed_bytes,
 				device_private_data[MINOR(dev->devt)].stats.fsync_count,
 				device_private_data[MINOR(dev->devt)].stats.no_space_left_error,
+				device_private_data[MINOR(dev->devt)].stats.dma_submit_error,
 				device_private_data[MINOR(dev->devt)].stats.fsync_busy_count,
 				device_private_data[MINOR(dev->devt)].stats.read_timeouts_error,
 				device_private_data[MINOR(dev->devt)].stats.opened_times);
@@ -1058,6 +1089,9 @@ static struct device* edma_add_queue_device(struct class* edma_class, void* rx_h
 
 	edma_queues->device_private_data[minor_index].write_ebcs.dma_queue_handle = tx_handle;
 	edma_queues->device_private_data[minor_index].read_ebcs.dma_queue_handle = rx_handle;
+	edma_queues->fpga_number = fpga_number;
+
+	mutex_init(&edma_queues->device_private_data[minor_index].edma_mutex);
 
 edma_queue_device_done:
 	return edmaCharDevice;
@@ -1091,15 +1125,50 @@ edma_event_device_done:
 		return edmaCharDevice;
 }
 
+static int edma_alloc_fpga_num(void)
+{
+	u32 fpga_num;
+
+	spin_lock(&edma_fpga_alloc_lock);
+	fpga_num = find_first_zero_bit(edma_fpga_alloc_bitmap, MAX_NUMBER_OF_EDMA_DEVICE);
+
+	if (fpga_num == MAX_NUMBER_OF_EDMA_DEVICE) {
+		fpga_num = -ENODEV;
+		goto out;
+	}
+	set_bit(fpga_num, edma_fpga_alloc_bitmap);
+
+out:
+	spin_unlock(&edma_fpga_alloc_lock);
+
+	pr_debug("%s: fpga_num=%d\n", __func__, fpga_num);
+	return fpga_num;
+}
+
+static void edma_free_fpga_num(int fpga_num)
+{
+	pr_debug("%s: fpga_num=%d\n", __func__, fpga_num);
+
+	spin_lock(&edma_fpga_alloc_lock);
+	clear_bit(fpga_num, edma_fpga_alloc_bitmap);
+	spin_unlock(&edma_fpga_alloc_lock);
+}
+
 
 int edma_dev_init(struct backend_device* backend_device)
 {
-	int ret;
+	int ret = 0;
 	struct edma_char_queue_device* edma_queues = NULL;
 	struct edma_char_event_device* edma_events = NULL;
 	struct device** edmaEventDevices;
-	static u32 fpga_number = 0;
+	int fpga_number;
 	int i;
+
+	fpga_number = edma_alloc_fpga_num();
+	if (fpga_number < 0) {
+		ret = -ENODEV;
+		goto edma_dev_init_done;	
+	}
 
 	edma_queues = (struct edma_char_queue_device*)kzalloc(sizeof(struct edma_char_queue_device), GFP_KERNEL);
 	if(edma_queues == NULL) {
@@ -1189,9 +1258,12 @@ int edma_dev_init(struct backend_device* backend_device)
 		edmaEventDevices[i] = edma_add_user_event(edma_class, edma_events, fpga_number, i);
 	}
 
-	fpga_number++;
-
 edma_dev_init_done:
+
+	if ((ret != 0) && (fpga_number >= 0)) {
+		edma_free_fpga_num(fpga_number);
+	}
+	
 	return ret;
 }
 
@@ -1203,6 +1275,7 @@ int edma_dev_cleanup(struct backend_device* backend_device)
 	struct device** edmaEventDevices = NULL;
 	u32 queue_Major = 0;
 	u32 events_Major = 0;
+	int fpga_number;
 
 	edmaEventDevices = (struct device**)backend_device->event_handles;
 
@@ -1215,7 +1288,6 @@ int edma_dev_cleanup(struct backend_device* backend_device)
 			queue_Major = MAJOR (dev->devt);
 			device_remove_file(dev, &dev_attr_stats);
 			device_destroy(edma_class, dev->devt);
-
 		}
 	}
 
@@ -1241,11 +1313,15 @@ int edma_dev_cleanup(struct backend_device* backend_device)
 	if(edma_events)
 		kfree(edma_events);
 
-	if(edma_queues->device_private_data)
-		kfree(edma_queues->device_private_data);
+	if(edma_queues) {
+		fpga_number = edma_queues->fpga_number;
 
-	if(edma_queues)
+		if(edma_queues->device_private_data) {
+			kfree(edma_queues->device_private_data);
+		}
 		kfree(edma_queues);
+		edma_free_fpga_num(fpga_number);
+	}
 
 	return 0;
 }

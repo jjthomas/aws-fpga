@@ -2,7 +2,16 @@
 
 # Introduction
 
-Developers' ten to simulate their designs to validate the RTL design and functionality, before hitting the build stage and registering it with AWS EC2 as Amazon FPGA Image (AFI). AWS FPGA HDK supports RTL-level simulation using Xilinx' Vivado XSIM,  MentorGraphics' Questa, and Synopsys' VCS RTL simulators. Developers can write their tests in SystemVerilog and/or C languages. If a developer choose to use the supplied C framework, he/she can use the same C code for simulation and for runtime on your FPGA-enabled instance like F1.
+Developers tend to simulate their designs to validate the RTL design and functionality, before hitting the build stage and registering it with AWS EC2 as Amazon FPGA Image (AFI). AWS FPGA HDK comes with a shell simulation model that supports RTL-level simulation using Xilinx' Vivado XSIM,  MentorGraphics' Questa, Cadence Incisive and Synopsys' VCS RTL simulators. See table below for supported simulator versions. 
+
+| 3rd party simulator Tool | 2017.4 Vivado tool | 2018.2 Vivado tool |
+|--------------------------|--------------------|--------------------|
+| Xilinx Vivado XSIM | Vivado v2017.4.op (64-bit) | Vivado v2018.2_AR71275_op (64-bit) |
+| Synopsys VCS  | vcs-mx/L-2016.06-1 | vcs-mx/N-2017.12-SP1-1 |
+| Mentor Graphics Questa | 10.6b | 10.6c_1 |
+| Cadence Incisive Enterprise Simulator(IES) | 15.20.063 | 15.20.063 |
+
+Developers can write their tests in SystemVerilog and/or C languages. If a developer chooses to use the supplied C framework, he/she can use the same C code for simulation and for runtime on your FPGA-enabled instance like F1.
 
 <img src="./ppts/simulation/Slide2.PNG" alt="Testbench Top-Level Diagram">
 
@@ -12,9 +21,9 @@ Developers' ten to simulate their designs to validate the RTL design and functio
 
 One easy way is to have a pre-installed environment is to use the [AWS FPGA Developer AMI available on AWS Marketplace](https://aws.amazon.com/marketplace/pp/B06VVYBLZZ) which comes with pre-installed Vivado tools and license.
 
-For developers who like to work on-premises or different AMI in the cloud, AWS recommend to follow the [required license for on-premise document](./on_premise_licensing_help.md).
+For developers who like to work on-premises or different AMI in the cloud, AWS recommends following the [required license for on-premise document](./on_premise_licensing_help.md).
 
-Please refer to the [release notes](../../RELEASE_NOTES.md) or the [supported Vivado version](../supported_vivado_versions.txt) for the exact version of Vivado tools, and the required license components.
+Please refer to the [release notes](../../RELEASE_NOTES.md) or the [supported Vivado version](../../supported_vivado_versions.txt) for the exact version of Vivado tools, and the required license components.
 
 ### Install the HDK and setup environment
 
@@ -29,7 +38,7 @@ AWS FPGA HDK can be cloned and installed on your EC2 instance or server by calli
 ### Try out one of HDK examples or write your own
 
 ```
-    $ cd cl/examples/cl_hello_world/verif/scripts    # simulations are launched from the scripts subdir of the design
+    $ cd hdk/cl/examples/cl_hello_world/verif/scripts    # simulations are launched from the scripts subdir of the design
     $ make                                       # run the default test using the Vivado XSIM
          Running compilation flow
          Done compilation
@@ -52,9 +61,7 @@ One fast way to write your own test is to start with an example test from one of
     |-- build
     |-- design
     |-- software
-    |   |--verif_rtl
-    |       |-- include              # C header files for simulations
-    |       `-- src                  # C source files for simulation
+    |   |--runtime               # C source files and header files for simulation
     `-- verif
         |-- scripts              # Makefiles and filelists
         |-- sim                  # sim results directory
@@ -83,9 +90,9 @@ module test_peek_poke();
 
 `define WR_START_BIT   32'h00000001
 `define RD_START_BIT   32'h00000002
-   
+
    logic [63:0] pcim_address = 64'h0000_0000_1234_0000;
-   
+
    initial begin
 
       tb.sh.power_up();
@@ -105,11 +112,11 @@ module test_peek_poke();
       tb.poke_ocl(`CNTL_REG, 32'h0003);                  // start read & write
 
       #500ns;   // give the hardware time to run
-         
+
       ...
-           
+
       tb.power_down();
-      
+
       $finish;
    end
 
@@ -128,87 +135,152 @@ If your have Mentor Graphics' Questa simulator, then add "SIMULATOR=questa".
 
 ```
 ========================================  NOTE ============================================
-Use only the SV test APIs supplied with the developer's kit to stimulate your CL 
+Use only the SV test APIs supplied with the developer's kit to stimulate your CL
 design. They were designed specifically to mimic the behavior of the actual AWS Shell logic.
 If you choose to control CL signalling via another method, proper operation with Shell
 logic is not guaranteed.
 
-The AWS Shell Interface specification can be found [here](https://github.com/aws/aws-fpga/hdk/docs/AWS_Shell_Interface_Specification.md)
+The AWS Shell Interface specification can be found [here](AWS_Shell_Interface_Specification.md)
 ============================================================================================
 ```
 
 ## C Tests
 
-As with the SystemVerilog (SV) testing, one fast way to write your own test is to start with an example test from one of the examples designs and customize it for your design. All C tests must be placed in the software/src sub-directory of CL design root and use the ".c" file extension.
+As with the SystemVerilog (SV) testing, one fast way to write your own test is to start with an example test from one of the examples designs and customize it for your design. All C tests must be placed in the software/runtime sub-directory of CL design root and use the ".c" file extension. HW/SW simulation support is added to simulate the software tests. SV_TEST should be used for any simulation specific code in the software test. SCOPE macro is specific to VCS simulator. Below are the 'C' header and source files for cl_hello_world example.
 
+
+
+## Header files to be included for HW/SW co-simulation
+
+[test_hello_world.c](../cl/examples/cl_hello_world/software/runtime/test_hello_world.c)
 
 ```
-#include <stdio.h>
-#include <stdint.h>
+For HW/SW simulation the below header files need to be included.
+SV_TEST macro should be defined in HW makefile to enable HW simulation of test_hello_world.c
 
-#include "sh_dpi_tasks.h"
+fpga_pci_sv.h is the SV wrapper for C functions.
 
-#define WR_INSTR_INDEX UINT64_C(0x1c)
-#define WR_ADDR_LOW    UINT64_C(0x20)
-#define WR_ADDR_HIGH   UINT64_C(0x24)
-#define WR_DATA        UINT64_C(0x28)
-#define WR_SIZE        UINT64_C(0x2c)
+sh_dpi_tasks.c is the C file which has common functions to be used between C and SV.
 
-#define RD_INSTR_INDEX UINT64_C(0x3c)
-#define RD_ADDR_LOW    UINT64_C(0x40)
-#define RD_ADDR_HIGH   UINT64_C(0x44)
-#define RD_DATA        UINT64_C(0x48)
-#define RD_SIZE        UINT64_C(0x4c)
+#ifdef SV_TEST
+   #include "fpga_pci_sv.h"
+#else
+   #include <fpga_pci.h>
+   #include <fpga_mgmt.h>
+#endif
 
-#define CNTL_REG       UINT64_C(0x08)
+#include <sh_dpi_tasks.h>
 
-#define WR_START_BIT   0x00000001
-#define RD_START_BIT   0x00000002
+```
 
+## Code changes to enable HW/SW co-simulation
+Logger will not work for HW simulation, so use the SV_TEST macro to exclude that. pci_vendor_id and pci_device_id are not used for HW simulation as well, so should be excluded.
+
+```
+#ifndef SV_TEST
+const struct logger *logger = &logger_stdout;
+/*
+ * pci_vendor_id and pci_device_id values below are Amazon's and avaliable to use for a given FPGA slot.
+ * Users may replace these with their own if allocated to them by PCI SIG
+ */
+static uint16_t pci_vendor_id = 0x1D0F; /* Amazon PCI Vendor ID */
+static uint16_t pci_device_id = 0xF000; /* PCI Device ID preassigned by Amazon for F1 applications */
+
+/*
+ * check if the corresponding AFI for hello_world is loaded
+ */
+#endif
+```
+
+Use cosim_printf function instead of printf
+
+```
+cosim_printf("===== Starting with peek_poke_example =====\n");
+
+```
+
+test_main should be used for HW simulation as shown below.
+
+```
+#ifdef SV_TEST
 void test_main(uint32_t *exit_code) {
-  long long addr;
-  uint8_t *buffer;
-  int j;
+#else
+int main(int argc, char **argv) {
+#endif
+```
+Also SCOPE should be defined for HW simulation with VCS and QUESTA simulators.
 
-  buffer = (uint8_t *)malloc(1024);
+```
+    //The statements within SCOPE ifdef below are needed for HW/SW co-simulation with VCS
+    #ifdef SCOPE
+      svScope scope;
+      scope = svGetScopeFromName("tb");
+      svSetScope(scope);
+    #endif
 
-  sv_map_host_memory(buffer);
+```
 
-  log_printf("test_main is running...");
+Checking for AFI ready is not required for HW/simulation as in simulation the hardware is directly accessed.
 
-  cl_poke(WR_INSTR_INDEX, 0);
-  cl_poke(WR_ADDR_LOW,   LOW_32b(buffer));
-  cl_poke(WR_ADDR_HIGH, HIGH_32b(buffer));
-  cl_poke(WR_DATA, 0);
-  cl_poke(WR_SIZE, 2);
+```
+#ifndef SV_TEST
+    rc = check_afi_ready(slot_id);
+#endif
+```
+Test exit should be codes as below for HW/SW co-simulation.
 
-  cl_poke(RD_INSTR_INDEX, 0);
-  cl_poke(RD_ADDR_LOW,   LOW_32b(buffer));
-  cl_poke(RD_ADDR_HIGH, HIGH_32b(buffer));
-  cl_poke(RD_DATA, 0);
-  cl_poke(RD_SIZE, 2);
+```
+#ifndef SV_TEST
+    return rc;
 
-  cl_poke(CNTL_REG, WR_START_BIT | RD_START_BIT);      // start read & write
+out:
+    return 1;
+#else
 
-  sv_pause(2);                                            // wait 2us
+out:
+   *exit_code = 0;
+#endif
 
-  // for fun print out the incrementing pattern
-  // written by the CL
-  for (j=0; j<64; j++)
-    printf("buffer[%d] = %0x\n", j, buffer[j]);
+```
 
-  log_printf("test_main is done.");
+[test_dram_dma_hwsw_cosim.c](../cl/examples/cl_dram_dma/software/runtime/test_dram_dma_hwsw_cosim.c)
 
-  *exit_code = 0;
-}
+```
+For HW/SW simulation the below header files need to be included.
+
+SV_TEST macro should be defined in HW makefile to enable HW simulation of test_dram_dma.c
+
+For test_dram_dma test the below two functions are used for DMA transfers from host and to host.
+
+//This function on the SV side sets up the string buffer and does Host to cl transfer.
+sv_fpga_start_buffer_to_cl(slot_id, channel, buffer_size, write_buffer, (0x10000000 + channel*MEM_16G));
+
+//This function on the SV side sets up the string buffer and does CL to Host transfer.
+sv_fpga_start_cl_to_buffer(slot_id, channel, buffer_size, (0x10000000 + channel*MEM_16G));
+
+//This function updates the buffer on 'C' side.
+int send_rdbuf_to_c(char* rd_buf)
+
+For HW/SW simulation the below header files need to be included.
+SV_TEST macro should be defined in HW makefile to enable HW simulation of test_dram_dma.c
+
 ```
 
 Once your test is written, you are ready to run a simulation. The *scripts/* directory is where you must launch all simulations.
 
+```
     $ cd verif/scripts
     $ make C_TEST={your_test_name} # compile and run using XSIM (NOTE: Do Not include .c)
     $ cd ../sim/{your_test_name} # to view the test log files
 
+    $ cd verif/scripts
+    $ make C_TEST={your_test_name} VCS=1 # compile and run using VCS (NOTE: Do Not include .c)
+    $ cd ../sim/{your_test_name} # to view the test log files
+
+    $ cd verif/scripts
+    $ make C_TEST={your_test_name} QUESTA=1 # compile and run using QUESTA (NOTE: Do Not include .c)
+    $ cd ../sim/{your_test_name} # to view the test log files
+```
 ## Accessing Host Memory During Simulation
 Your design may share data between host memory and logic within the CL. To verify your CL is accessing host memory, the test bench includes two types of host memory: SV and C domain host memory. If you are are only using SV to verify your CL, then use SV domain host memory. An associative array represents host memory, where the address is the key to locate a 32-bit data value.
 
@@ -218,7 +290,7 @@ Your design may share data between host memory and logic within the CL. To verif
 
 If you are are using C to verify your CL, then use C domain host memory. Allocate a memory buffer in your C code and pass the pointer to the SV domain. The AXI BFM connected to the PCIeM port will use DPI calls to read and write the memory buffer.
 
-<img src="./ppts/simulation/Slide3.PNG" alt="C/SV Host Memory">
+<img src="./ppts/simulation/Slide3.PNG" alt="C/SV Host Memory"/>
 
 
 Backdoor access to host memory is provided by two functions:
@@ -227,7 +299,7 @@ Backdoor access to host memory is provided by two functions:
    function void hm_put_byte(input longint unsigned addr, byte d);
    function byte hm_get_byte(input longint unsigned addr);
 ```
-Use these functions when you need to access data in either SV or C domain host memory. They take zero simulation time and are useful for initializing memory or checking results stored in memory. 
+Use these functions when you need to access data in either SV or C domain host memory. They take zero simulation time and are useful for initializing memory or checking results stored in memory.
 
 
 # Debugging Custom Logic using the AWS HDK
@@ -238,7 +310,7 @@ The process for dumping and viewing waves can differ depending on the simulator 
 
 1. Specify scope of logic for wave dump
 2. Re-run simulation to dump waves
-3. View waves in Vivado using .tcl 
+3. View waves in Vivado using .tcl
 
 ## Specify scope of logic for wave dump
 
@@ -258,13 +330,25 @@ Note that dumping all signals of a design will increase simulation time and will
 
 For more information on the syntax for `add_wave` and other tcl functions, see the [Vivado Design Suite Tcl Command Reference Guide](https://www.xilinx.com/support/documentation/sw_manuals/xilinx2013_1/ug835-vivado-tcl-commands.pdf)
 
+## Protocol Checkers
+
+Xilinx Protocol Checkers are instantiated on all AXI4 and AXIL interfaces in Shell BFM. By default all the tests run with protocol checkers enabled. If there is a protocol error in any one of the AXI interfaces, then the protocol checker will fire an error as below.
+
+tb.card.fpga.sh.axl_pc_bar1_slv_inst.REP : BIT(         56) :   ERROR : Invalid state x
+tb.card.fpga.sh.axl_pc_sda_slv_inst.REP : BIT(         35) :   ERROR : Invalid state x
+tb.card.fpga.sh.axi_pc_mstr_inst_pcim.REP : BIT(         33) :   ERROR : Invalid state x
+tb.card.fpga.sh.axi_pc_mstr_inst_pcis.REP : BIT(         35) :   ERROR : Invalid state x
+tb.card.fpga.sh.axl_pc_ocl_slv_inst.REP : BIT(         35) :   ERROR : Invalid state x
+
+Please refer to hdk/common/verif/models/xilinx_axi_pc/axi_protocol_checker_v1_1_vl_rfs.v for mapping between bit positins and the protocol errors.
+
 ## Re-run simulation to dump waves
 
 Once `waves.tcl` has been modified, re-run the simulatio with `make` as shown at the top of this document.
 
 ## View waves in Vivado using .tcl
 
-As mentioned above, all simulation results will be placed in `sim/<test_name>`.  If using the included CL examples, the waves database should appear as `tb.wdb`.  
+As mentioned above, all simulation results will be placed in `sim/<test_name>`.  If using the included CL examples, the waves database should appear as `tb.wdb`.
 
 To view the waves, first create a .tcl file called `open_waves.tcl` with the following commands:
 ```
@@ -296,6 +380,21 @@ The SV Test API task 'poke' writes 64 bits of data to the CL via the AXI PCIeS i
 | slot_id | Slot ID |
 | addr | Write Address |
 | data | Write Data |
+| id | AXI ID |
+| size | Data Size |
+| intf | AXI CL Port |
+
+## _poke_pcis_wc_
+## Description
+The SV Test API task 'poke' writes 64 bits of data to the CL via the AXI PCIeS interface.
+## Declaration
+#### task poke_pcis_wc(input logic [63:0] addr, logic [31:0] data [$], logic [5:0]  id = 6'h0, logic [2:0]  size = 3'd6);
+
+| Argument | Description |
+| --- | --- |
+| slot_id | Slot ID |
+| addr | Write Address |
+| data [$] | DW array for Write Data|
 | id | AXI ID |
 | size | Data Size |
 | intf | AXI CL Port |
@@ -410,7 +509,7 @@ The SV Test API function 'task peek_pcis' reads 512 bits of data from the CL via
 ## Description
 The SV Test API task 'poke_pcis' writes 512 bits of data to the CL via the AXI PCIE interface.
 ## Declaration
-#### task poke_pcis(input int slot_id = 0, logic [63:0] addr, logic [511:0] data, logic [5:0] id = 6'h0);
+#### task poke_pcis(input int slot_id = 0, logic [63:0] addr, logic [511:0] data, logic [5:0] id = 6'h0, logic [63:0] strb);
 
 | Argument | Description |
 | --- | --- |
@@ -609,7 +708,7 @@ The C Test API function 'extern void cl_peek(uint64_t addr)' Reads 32 bits of da
 | addr | Read Address |
 | data | Read Data |
 
-##_sv_map_host_memory_
+## _sv_map_host_memory_
 ## Description
 The C Test API function 'extern void sv_map_host_memory(uint8_t *memory)' maps host memory to memory allocated by memory buffer. This function calls the SV map_host_memory function via DPI calls.
 ## Declaration
@@ -648,24 +747,87 @@ The C Test API function 'void log_printf(const char *format, ...)' is used to pr
 
 | Argument | Description |
 | --- | --- |
-| *format | message to be printed | 
+| *format | message to be printed |
 
 ## _sv_printf_
 ## Description
-The C Test API function 'extern void sv_printf(char *msg)' is used to send a message buffer to the SV side of simulation. 
+The C Test API function 'extern void sv_printf(char *msg)' is used to send a message buffer to the SV side of simulation.
 ## Declaration
 #### extern void sv_printf(char *msg);
 
 | Argument | Description |
 | --- | --- |
-| *msg | Character buffer | 
+| *msg | Character buffer |
 
 ## _sv_pause_
 ## Description
-The C test API function 'extern void sv_pause(uint32_t x);' is used to add delay to a simulation. 
+The C test API function 'extern void sv_pause(uint32_t x);' is used to add delay to a simulation.
 ## Declaration
 #### extern void sv_pause(uint32_t x);
 
 | Argument | Description |
 | --- | --- |
-| x | Delay in micro seconds | 
+| x | Delay in micro seconds |
+
+## _sv_fpga_start_buffer_to_cl_
+## Description
+The C test API function 'extern "DPI-C" task sv_fpga_start_buffer_to_cl;' is used to do DMA data transfer from Host to CL.
+## Declaration
+#### extern void sv_fpga_start_buffer_to_cl(uint32_t slot_id, uint32_t chan, uint32_t buf_size, const char *wr_buffer, uint64_t cl_addr);
+
+| Argument | Description |
+| --- | --- |
+| slot_id | Slot ID |
+| chan | DMA channel |
+| buf_size | Size of the buffer |
+| wr_buffer | Data to be transferred |
+| cl_addr | Destination CL address |
+
+## _sv_fpga_start_cl_to_buffer_
+## Description
+The C test API function 'extern "DPI-C" task sv_fpga_start_cl_to_buffer;' is used to do DMA data transfer from Host to CL.
+## Declaration
+#### extern void sv_fpga_start_cl_to_buffer(uint32_t slot_id, uint32_t chan, uint32_t buf_size, uint64_t cl_addr);
+
+| Argument | Description |
+| --- | --- |
+| slot_id | Slot ID |
+| chan | DMA channel |
+| buf_size | Size of the buffer |
+| wr_buffer | Data to be transferred |
+| cl_addr | Destination CL address |
+
+
+## _set_chk_clk_freq_
+The SV test API function 'function void set_chk_clk_freq(input int slot_id = 0, logic chk_freq = 1'b1);' is used to enable frequency checks in shell model.
+## Declaration
+#### function void set_chk_clk_freq(input int slot_id = 0, logic chk_freq = 1'b1);
+
+| Argument | Description |
+| --- | --- |
+| slot_id | Slot ID |
+| chk_freq | enable bit|
+
+## _chk_prot_err_stat_
+The SV test API function 'function logic chk_prot_err_stat(input int slot_id = 0);' is used to check protocol error status.
+## Declaration
+#### function logic chk_clk_err_cnt(input int slot_id = 0);
+| Argument | Description |
+| --- | --- |
+| slot_id | Slot ID |
+
+## _get_global_counter_0_
+The SV test API function 'function logic [63:0] get_global_counter_0(input int slot_id = 0);' is used to get global counter_0 value.
+## Declaration
+#### function logic [63:0] get_global_counter_0(input int slot_id = 0);
+| Argument | Description |
+| --- | --- |
+| slot_id | Slot ID |
+
+## _get_global_counter_1_
+The SV test API function 'function logic [63:0] get_global_counter_1(input int slot_id = 0);' is used to get global counter_1 value.
+## Declaration
+#### function logic [63:0] get_global_counter_1(input int slot_id = 0);
+| Argument | Description |
+| --- | --- |
+| slot_id | Slot ID |

@@ -158,7 +158,24 @@ static const char *load_afi_usage[] = {
 	"      --sync-timeout TIMEOUT",
 	"          Specify a timeout TIMEOUT (in seconds) for the sequence",
 	"          of operations that are performed in the synchronous (blocking)",
-	"          mode",
+	"          mode.",
+	"      -F, --force-shell-reload",
+	"          Reload the FPGA shell on AFI load, even if the next AFI",
+	"          doesn't require it.",
+	"      -a, --clock-a0-freq",
+	"          Request the clock a0 frequency be set to this value in Mhz or less,",
+	"          setting other frequencies in clock group a much slower.",
+	"      -b, --clock-b0-freq",
+	"          Request the clock b0 frequency be set to this value in Mhz or less,",
+	"          setting other frequencies in clock group b much slower.",
+	"      -c, --clock-c0-freq",
+	"          Request the clock c0 frequency be set to this value in Mhz or less,",
+	"          setting other frequencies in clock group c much slower.",
+	"      -D, --dram-data-retention",
+	"          Request that dram data retention be performed for this afi load.",
+	"          This will try to detect if retention is possible and reject the",
+	"          load if it is not. To use, call load with another afi already",
+	"          loaded.",
 };
 
 static const char *clear_afi_usage[] = {
@@ -446,17 +463,22 @@ parse_args_load_afi(int argc, char *argv[])
 	static struct option long_options[] = {
 		{"fpga-image-slot",		required_argument,	0,	'S'	},
 		{"fpga-image-id",		required_argument,	0,	'I'	},
+		{"clock-a0-freq",		required_argument,	0,	'a'	},
+		{"clock-b0-freq",		required_argument,	0,	'b'	},
+		{"clock-c0-freq",		required_argument,	0,	'c'	},
 		{"request-timeout",		required_argument,	0,	'r'	},
 		{"sync-timeout",		required_argument,	0,	's'	},
 		{"async",				no_argument,		0,	'A'	},
 		{"headers",				no_argument,		0,	'H'	},
 		{"help",				no_argument,		0,	'h'	},
 		{"version",				no_argument,		0,	'V'	},
+		{"force-shell-reload",				no_argument,		0,	'F'	},
+		{"dram-data-retention",	no_argument,		0,	'D'	},
 		{0,						0,					0,	0	},
 	};
 
 	int long_index = 0;
-	while ((opt = getopt_long(argc, argv, "S:I:r:s:AH?hV",
+	while ((opt = getopt_long(argc, argv, "S:I:r:s:a:b:c:AH?hVFD",
 			long_options, &long_index)) != -1) {
 		switch (opt) {
 		case 'S': {
@@ -471,6 +493,21 @@ parse_args_load_afi(int argc, char *argv[])
 
 			strncpy(f1.afi_id, optarg, sizeof(f1.afi_id)); 
 			f1.afi_id[sizeof(f1.afi_id) - 1] = 0; 
+			break;
+		}
+		case 'a': {
+			string_to_uint(&f1.clock_a0_freq, optarg);
+			fail_on_user(f1.clock_a0_freq == 0, err, "Requested frequency must be positive");
+			break;
+		}
+		case 'b': {
+			string_to_uint(&f1.clock_b0_freq, optarg);
+			fail_on_user(f1.clock_b0_freq == 0, err, "Requested frequency must be positive");
+			break;
+		}
+		case 'c': {
+			string_to_uint(&f1.clock_c0_freq, optarg);
+			fail_on_user(f1.clock_c0_freq == 0, err, "Requested frequency must be positive");
 			break;
 		}
 		case 'r': {
@@ -495,10 +532,18 @@ parse_args_load_afi(int argc, char *argv[])
 			f1.show_headers = true;
 			break;
 		}
+		case 'F': {
+			f1.force_shell_reload = true;
+			break;
+		}
 		case 'V': {
 			print_version();
 			get_parser_completed(opt);
 			goto out_ver;
+		}
+		case 'D': {
+			f1.dram_data_retention = true;
+			break;
 		}
 		default: {
 			get_parser_completed(opt);

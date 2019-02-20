@@ -17,8 +17,8 @@
  * Default timeout:
  *   CLI_TIMEOUT_DFLT * CLI_DELAY_MSEC_DFLT
  */
-#define FPGA_MGMT_TIMEOUT_DFLT    25
-#define FPGA_MGMT_DELAY_MSEC_DFLT 200
+#define FPGA_MGMT_TIMEOUT_DFLT    250
+#define FPGA_MGMT_DELAY_MSEC_DFLT 20
 
 /** First flag bit, @see afi_cmd_hdr#len_flags */
 #define AFI_CMD_HDR_FLAGS_SHIFT 24
@@ -51,14 +51,16 @@ int fpga_mgmt_process_cmd(int slot_id,
 	const union afi_cmd *cmd, union afi_cmd *rsp, uint32_t *len);
 void fpga_mgmt_cmd_init_metrics(union afi_cmd *cmd, uint32_t *len,
 	uint32_t flags);
-void fpga_mgmt_cmd_init_load(union afi_cmd *cmd, uint32_t *len,
-	const char *afi_id);
+void fpga_mgmt_cmd_init_load(union afi_cmd *rsp, uint32_t *len,
+	union fpga_mgmt_load_local_image_options *opt);
 void fpga_mgmt_cmd_init_clear(union afi_cmd *cmd, uint32_t *len);
 
 int
 fpga_mgmt_cmd_handle_metrics(const union afi_cmd *rsp, uint32_t len,
 	struct afi_cmd_metrics_rsp **metrics);
 
+int fpga_mgmt_mbox_attach(int slot_id);
+int fpga_mgmt_mbox_detach(int slot_id);
 int fpga_mgmt_detach_all(void);
 
 #define fail_slot_id(slot_id, label, ret) do {               \

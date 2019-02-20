@@ -58,14 +58,14 @@ enum {
  * e.g. load + describe multi-AFI command sequences.
  *  timeout * delay_msec 
  */
-#define CLI_SYNC_TIMEOUT_DFLT		300	
-#define CLI_SYNC_DELAY_MSEC_DFLT	200	
+#define CLI_SYNC_TIMEOUT_DFLT		3000
+#define CLI_SYNC_DELAY_MSEC_DFLT	20	
 
 /**
  * Request timeout: timeout * delay_msec
  */
-#define CLI_REQUEST_TIMEOUT_DFLT   	50
-#define CLI_REQUEST_DELAY_MSEC_DFLT	200	
+#define CLI_REQUEST_TIMEOUT_DFLT   	500
+#define CLI_REQUEST_DELAY_MSEC_DFLT	20	
 
 /**
  * ec2_fpga_cmd:
@@ -75,6 +75,10 @@ struct ec2_fpga_cmd {
 	uint32_t opcode;
 	/** The AFI slot */
 	uint32_t afi_slot;
+	/** Requested clock frequencies for each clock group */
+	uint32_t clock_a0_freq;
+	uint32_t clock_b0_freq;
+	uint32_t clock_c0_freq;
 	/** The AFI ID */
 	char	 afi_id[AFI_ID_STR_MAX];
 	/** 
@@ -99,6 +103,10 @@ struct ec2_fpga_cmd {
 	bool	 rescan;
 	/** Show mailbox device option */
 	bool     show_mbox_device;
+	/** Reload the shell even if not required for AFI */
+	bool     force_shell_reload;
+	/** Attempt dram data retention on load */
+	bool	 dram_data_retention;
 	/** Virtual DIP switch */
 	uint16_t v_dip_switch;
 	/** Virtual JTAG TCP port */

@@ -26,6 +26,7 @@ fi
 full_script=$(readlink -f $script)
 script_name=$(basename $full_script)
 script_dir=$(dirname $full_script)
+current_dir=$(pwd)
 
 debug=0
 
@@ -40,26 +41,6 @@ function does_module_exist() {
     else
         return 1;
     fi
-}
-
-
-function info_msg {
-  echo -e "INFO: $1"
-}
-
-function debug_msg {
-  if [[ $debug == 0 ]]; then
-    return
-  fi
-  echo -e "DEBUG: $1"
-}
-
-function warn_msg {
-  echo -e "WARNING: $1"
-}
-
-function err_msg {
-  echo -e >&2 "ERROR: $1"
 }
 
 function usage {
@@ -99,25 +80,22 @@ for (( i = 0; i < ${#args[@]}; i++ )); do
   esac
 done
 
-# Make sure that AWS_FPGA_REPO_DIR is set to the location of this script.
-if [[ ":$AWS_FPGA_REPO_DIR" == ':' ]]; then
-  debug_msg "AWS_FPGA_REPO_DIR not set so setting to $script_dir"
-  export AWS_FPGA_REPO_DIR=$script_dir
-elif [[ $AWS_FPGA_REPO_DIR != $script_dir ]]; then
-  info_msg "Changing AWS_FPGA_REPO_DIR from $AWS_FPGA_REPO_DIR to $script_dir"
-  export AWS_FPGA_REPO_DIR=$script_dir
-else
-  debug_msg "AWS_FPGA_REPO_DIR=$AWS_FPGA_REPO_DIR"
-fi
+source $script_dir/shared/bin/set_common_functions.sh
+source $script_dir/shared/bin/set_common_env_vars.sh
+
+hdk_shell_version=$(readlink $HDK_COMMON_DIR/shell_stable)
 
 debug_msg "Checking for Vivado install:"
 
 # before going too far make sure Vivado is available
-if ! vivado -version > /dev/null 2>&1; then
+if ! is_vivado_available; then
     err_msg "Please install/enable Vivado."
     err_msg "  If you are using the FPGA Developer AMI then please request support."
     return 1
 fi
+
+# Install any patches as required
+setup_patches
 
 #Searching for Vivado version and comparing it with the list of supported versions
 
@@ -125,42 +103,21 @@ export VIVADO_VER=`vivado -version | grep Vivado | head -1`
 
 info_msg "Using $VIVADO_VER"
 
-if grep -Fxq "$VIVADO_VER" $AWS_FPGA_REPO_DIR/hdk/supported_vivado_versions.txt
+if grep -Fxq "$VIVADO_VER" $AWS_FPGA_REPO_DIR/supported_vivado_versions.txt
 then
     debug_msg "$VIVADO_VER is supported by this HDK release."
 else
     err_msg "$VIVADO_VER is not supported by this HDK release."
     err_msg "Supported versions are:"
-    cat $AWS_FPGA_REPO_DIR/hdk/supported_vivado_versions.txt
+    cat $AWS_FPGA_REPO_DIR/supported_vivado_versions.txt
     return 1
 fi
 
+VIVADO_TOOL_VERSION=`vivado -version | grep Vivado | head -1 | sed 's:Vivado *::' | sed 's: .*$::'`
+export VIVADO_TOOL_VERSION=${VIVADO_TOOL_VERSION:0:7}
+echo "VIVADO_TOOL_VERSION is $VIVADO_TOOL_VERSION"
+
 debug_msg "Vivado check succeeded"
-
-info_msg "Setting up environment variables"
-
-# Clear environment variables
-unset HDK_DIR
-unset HDK_COMMON_DIR
-unset HDK_SHELL_DIR
-unset HDK_SHELL_DESIGN_DIR
-# Don't unset CL_DIR if designer has already set it.
-#unset CL_DIR
-
-export HDK_DIR=$AWS_FPGA_REPO_DIR/hdk
-
-# The next variable should not be modified and should always point to the /common directory under HDK_DIR
-export HDK_COMMON_DIR=$HDK_DIR/common
-
-# Point to the latest version of AWS shell
-export HDK_SHELL_DIR=$(readlink -f $HDK_COMMON_DIR/shell_stable)
-hdk_shell_version=$(readlink $HDK_COMMON_DIR/shell_stable)
-
-# Set the common shell design dir
-export HDK_SHELL_DESIGN_DIR=$HDK_SHELL_DIR/design
-
-export PATH=$(echo $PATH | sed -e 's/\(^\|:\)[^:]\+\/hdk\/common\/scripts\(:\|$\)/:/g; s/^://; s/:$//')
-PATH=$AWS_FPGA_REPO_DIR/hdk/common/scripts:$PATH
 
 # The CL_DIR is where the actual Custom Logic design resides. The developer is expected to override this.
 # export CL_DIR=$HDK_DIR/cl/developer_designs
@@ -194,7 +151,7 @@ do
   s3_shell_dir=$hdk_shell_s3_bucket/hdk/$hdk_shell_version/build/$sub_dir/from_aws
   # Download the sha256
   if [ ! -e $hdk_shell_dir ]; then
-  	mkdir -p $hdk_shell_dir || { err_msg "Failed to create $hdk_shell_dir"; return 2; }
+      mkdir -p $hdk_shell_dir || { err_msg "Failed to create $hdk_shell_dir"; return 2; }
   fi
   # Use curl instead of AWS CLI so that credentials aren't required.
   curl -s https://s3.amazonaws.com/$s3_shell_dir/$shell_file.sha256 -o $hdk_file.sha256 || { err_msg "Failed to download HDK shell's $shell_file version from $s3_shell_dir/$shell_file.sha256 -o $hdk_file.sha256"; return 2; }
@@ -284,4 +241,7 @@ else
     unset CL_DIR
   fi
 fi
+
+cd $current_dir
+
 info_msg "AWS HDK setup PASSED.";

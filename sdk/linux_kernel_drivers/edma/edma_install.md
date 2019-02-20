@@ -1,13 +1,16 @@
 
 # Elastic DMA (EDMA) Installation and Frequently Asked Questions
 
-EDMA is a Linux kernel driver provided by AWS for using DMA and/or User-defined interrupts for AWS FPGAs. Please see [EDMA README](./README.md) for details.
+
+## :exclamation: Please Note: Support for EDMA driver has ended. AWS strongly recommends moving applications to XDMA driver. EDMA driver will be deprecated and removed starting Developer Kit release 1.4.7.
+
+EDMA is a Linux kernel driver provided by AWS for using DMA and/or User-defined interrupts for AWS FPGAs. Please see [EDMA README](README.md) for details.
 
 # Table of Contents
 
 1. [Q: How do I know if the EDMA driver is available and installed?](#howIKnow)
 2. [Q: How do I get the source code of the `edma` driver and compile it?](#howToCompile)
-3. [Q: How can I make sure the installed driver will be preserved following a kernel update?](#howToUpgradeKernel) 
+3. [Q: How can I make sure the installed driver will be preserved following a kernel update?](#howToUpdateKernel) 
 4. [Q: What PCIe Vendor-ID and Device-ID does EDMA driver support](#howToDIDnVID)
 
 
@@ -23,14 +26,14 @@ To make sure the driver is installed run next command from your linux shell:
   
 Running this will return EDMA only if the driver is installed and running.
 
-If running, the device /dev/fpgaX(X=0..7) represents an FPGA device in slot X, and with each FPGA exposing multiple queues under /dev/fpgaX/dma_queueN, and multiple user-defined interrupts/events under /dev/fpgaX/eventK.
+If running, the EDMA driver exposes multiple device queues as `/dev/edma_X_queue_Y`, and user-defined interrupts/events under `/dev/fpga_X_eventY`.  Where `X` is a number from 0-7 to represent different FPGAs in the system, and `Y` is used to represent the available DMA queues and event interfaces for a given FPGA.
 
 The developer can operate these DMA queues and interrupts directly from Linux userspace application.
 
 <a name="howToCompile"></a>
 **Q: How do I get the source code of the `edma` driver and compile it?** 
 
-Amazon `edma` driver is included in [AWS FPGA SDK](https://github.com/aws/aws-fpga/master/blob/sdk/kernel_drivers/edma) for integration with other Linux distributions, please follow the next set of steps:
+Amazon `edma` driver is included in [AWS FPGA SDK](.) for integration with other Linux distributions, please follow the next set of steps:
 
 __**Step 1**__: Make sure you have `gcc` and `linux kernel source code` installed in your machine:
 
@@ -83,17 +86,21 @@ __**Step 4**__: Copy the driver to the modules directory:
 
 __*For AmazonLinux, RedHat, Open Suse, and Centos*__:
 
-The next set of steps will installing the kernel driver so it get called everytime the machine boots/reboots  
+The next set of steps will install the kernel driver so it gets loaded everytime the machine boots/reboots: 
 
-```
-
-  $ echo 'edma' | sudo tee --append /etc/modules-load.d/edma.conf
-  $ sudo cp edma-drv.ko /lib/modules/`uname -r`/
-  $ sudo depmod
-```  
-
-To install the driver without rebooting, run
-  `$ sudo modprobe edma-drv`
+ `$ sudo make install`
+  
+To load the driver without rebooting:
+ 
+ `$ sudo modprobe edma-drv`
+  
+To unload the driver:
+  
+ `$ sudo rmmod edma-drv`
+  
+To uninstall the driver so it no-longer gets loaded everytime the machine boots/reboots:
+  
+ `$ sudo make uninstall`
 
 ***NOTE:*** *steps 3 and 4 would need to be repeated for every kernel update*.  
   
@@ -115,44 +122,47 @@ __*Step C:*__	**Create the dkms configuration file with the following values, su
 
 ```
   $ sudo vim /usr/src/edma-1.0.0/dkms.conf
-  PACKAGE_NAME="edma"
+  PACKAGE_NAME="edma-drv"
   PACKAGE_VERSION="1.0.0"
   CLEAN="make -C ./ clean"
   MAKE="make -C ./ BUILD_KERNEL=${kernelver}"
-  BUILT_MODULE_NAME[0]="edma"
+  BUILT_MODULE_NAME[0]="edma-drv"
   BUILT_MODULE_LOCATION="."
   DEST_MODULE_LOCATION[0]="/updates"
-  DEST_MODULE_NAME[0]="edma"
+  DEST_MODULE_NAME[0]="edma-drv"
   AUTOINSTALL="yes"
   ```  
   
 __*Step D:*__	 **Add, build, and install the edma module on your instance with dkms.**  
 
 ```
-  $ sudo dkms add -m edma -v 1.0.0
-  $ sudo dkms build -m edma -v 1.0.0
-  $ sudo dkms install -m edma -v 1.0.0
+  $ sudo dkms add -m edma-drv -v 1.0.0
+  $ sudo dkms build -m edma-drv -v 1.0.0
+  $ sudo dkms install -m edma-drv -v 1.0.0
 ```
 
 __*Step E:*__	**Rebuild the initramfs so the correct module is loaded at boot time.**
   `$ TBD`
   
-__*Step F:*__ **Verify that the edma module is installed using the modinfo edma.**
+__*Step F:*__ **Verify that the edma module is installed using the modinfo edma-drv.**
 ```
-  $ modinfo edma
-  filename:       /lib/modules/3.13.0-74-generic/updates/dkms/edma-drv.ko
+  $ modinfo edma-drv
+  filename:       /lib/modules/3.10.0-514.10.2.el7.x86_64/edma-drv.ko
   version:        1.0.0
   license:        GPL
   description:    Elastic Direct Memory Access
   author:         Amazon.com, Inc. or its affiliates
-  srcversion:     9693C876C54CA64AE48F0CA
-  alias:          pci:v00001D0Fd0000EC21sv*sd*bc*sc*i*
-  alias:          pci:v00001D0Fd0000EC20sv*sd*bc*sc*i*
-  alias:          pci:v00001D0Fd00001EC2sv*sd*bc*sc*i*
-  alias:          pci:v00001D0Fd00000EC2sv*sd*bc*sc*i*
-  depends:
-  vermagic:       3.13.0-74-generic SMP mod_unload modversions
-  parm:           debug:Debug level (0=none,...,16=all) (int)
+  rhelversion:    7.3
+  srcversion:     F01AF35203139A075B6C6B0
+  alias:          pci:v00001D0Fd0000F001sv*sd*bc*sc*i*
+  depends:        
+  vermagic:       3.10.0-514.10.2.el7.x86_64 SMP mod_unload modversions 
+  parm:           poll_mode:Set 1 for hw polling, default is 0 (interrupts) (uint)
+  parm:           desc_blen_max:per descriptor max. buffer length, default is (1 << 28) - 1 (uint)
+  parm:           transient_buffer_size:Transient buffer size. (default=32MB) (uint)
+  parm:           single_transaction_size:The size of a single transaction over the DMA. (default=32KB) (uint)
+  parm:           edma_queue_depth:EDMA queue depth. (default=1024) (uint)
+  parm:           fsync_timeout_sec:fsync timeout sec. (default=9) (uint)
 ```
 
 <a name="howToDIDnVID"></a>  

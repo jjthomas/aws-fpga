@@ -24,8 +24,8 @@
 #include "fpga_mgmt_internal.h"
 
 /** Synchronous API (load/clear) default timeout and delay msecs */
-#define FPGA_MGMT_SYNC_TIMEOUT		300	
-#define FPGA_MGMT_SYNC_DELAY_MSEC	200 
+#define FPGA_MGMT_SYNC_TIMEOUT		3000
+#define FPGA_MGMT_SYNC_DELAY_MSEC	20
 
 struct fgpa_mgmt_state_s fpga_mgmt_state = {
 	.timeout = FPGA_MGMT_TIMEOUT_DFLT,
@@ -53,6 +53,33 @@ void fpga_mgmt_set_cmd_timeout(uint32_t value)
 void fpga_mgmt_set_cmd_delay_msec(uint32_t value)
 {
 	fpga_mgmt_state.delay_msec = value;
+}
+
+static 
+int fpga_mgmt_get_sh_version(int slot_id, uint32_t *sh_version)
+{
+	pci_bar_handle_t handle = PCI_BAR_HANDLE_INIT;
+	int ret = -EINVAL;
+
+	fail_on(!sh_version, err, "sh_version is NULL");
+	fail_slot_id(slot_id, err, ret);
+
+	ret = fpga_mgmt_mbox_attach(slot_id);
+	fail_on(ret, err, "fpga_mgmt_mbox_attach failed");
+
+	handle = fpga_mgmt_state.slots[slot_id].handle;
+
+	struct fpga_hal_mbox_versions ver;
+	ret = fpga_hal_mbox_get_versions(handle, &ver);
+	fail_on(ret, err, "fpga_hal_mbox_get_versions failed");
+
+	*sh_version = ver.sh_version;
+err:
+	if (handle != PCI_BAR_HANDLE_INIT) {
+		fpga_mgmt_mbox_detach(slot_id);
+	}
+	
+	return ret;
 }
 
 int fpga_mgmt_describe_local_image(int slot_id,
@@ -93,11 +120,10 @@ int fpga_mgmt_describe_local_image(int slot_id,
 	info->ids = metrics->ids;
 	strncpy(info->ids.afi_id, afi_id, sizeof(info->ids.afi_id));
 
-	pci_bar_handle_t handle = fpga_mgmt_state.slots[slot_id].handle;
-	struct fpga_hal_mbox_versions ver;
-	ret = fpga_hal_mbox_get_versions(handle, &ver);
-	fail_on(ret, out, "fpga_hal_mbox_get_versions failed");
-	info->sh_version = ver.sh_version;
+	uint32_t sh_version;
+	ret = fpga_mgmt_get_sh_version(slot_id, &sh_version);
+	fail_on(ret, out, "fpga_mgmt_get_sh_version failed");
+	info->sh_version = sh_version;
 
 	ret = fpga_pci_get_slot_spec(slot_id, &info->spec);
 	fail_on(ret, out, "fpga_pci_get_slot_spec failed");
@@ -144,6 +170,97 @@ const char *fpga_mgmt_strerror(int err)
 	return FPGA_ERR2STR(err);
 }
 
+static const char * long_help_FPGA_ERR_AFI_CMD_BUSY =
+	"The FPGA is busy with an operation such as a load or a clear.\n";
+
+static const char * long_help_FPGA_ERR_AFI_ID_INVALID =
+	"The agfi id passed is invalid or you do not have permission to load\n"
+	"the AFI.\n";
+
+static const char * long_help_FPGA_ERR_AFI_CMD_API_VERSION_INVALID =
+	"The FPGA images tools are outdated. Newer tools are available at\n"
+	"https://github.com/aws/aws-fpga\n";
+
+static const char * long_help_FPGA_ERR_CL_ID_MISMATCH =
+	"The vendor and device ID presented by the CL did not match expected\n"
+	"values provided at ingestion time.\n";
+
+static const char * long_help_FPGA_ERR_CL_DDR_CALIB_FAILED =
+	"The DDR controllers in the CL did not correctly calibrate DDR.\n";
+
+static const char * long_help_FPGA_ERR_SHELL_MISMATCH =
+	"The requested AFI relies on a shell which is not supported on this\n"
+	"instance type.\n";
+
+static const char * long_help_FPGA_ERR_POWER_VIOLATION =
+	"The loaded CL exceeded maximum allowed power consumption and was\n"
+	"automatically disabled. To clear this condition, simply reload the AFI.\n";
+
+static const char * long_help_FPGA_ERR_PCI_MISSING =
+	"Unable to locate a PCI device or resource for communicating with the\n"
+	"FPGA API. This can happen if the FPGA has stopped behaving correctly\n"
+	"and the instance will need to be stopped and restarted. This can also\n"
+	"happen if the tools are run on a system with no AWS FPGA attached.\n";
+
+static const char * long_help_ETIMEDOUT =
+	"A time out error is usually spurious and the request can be retried. If\n"
+	"it continues to fail, the FPGA may be inaccessible or the the FPGA API\n"
+	"may be unresponsive.\n";
+
+static const char * long_help_FPGA_ERR_AFI_CMD_MALFORMED =
+	"A malformed response from the FPGA API can indicate that the FPGA has\n"
+	"stopped behaving correctly and the instance will need to be stopped and\n"
+	"and restarted. If this continues to happen (after an instance restart),\n"
+	"this may be an indication that your AFI is exceeding allowed power\n"
+	"consumption limits.\n";
+
+static const char * long_help_FPGA_ERR_SOFTWARE_PROBLEM =
+	"This usually indicates a bug in the fpga image tools, but can also be a\n"
+	"symptom of a bug in the code which is using the library in cases where\n"
+	"the customer is using the library directly.\n";
+
+static const char * long_help_FPGA_ERR_UNRESPONSIVE =
+	"The FPGA or PCI subsytem is not responding. This can happen if the FPGA\n"
+	"stopped behaving correctly and the instance will need to be stopped and\n"
+	"restarted.\n";
+
+
+const char *fpga_mgmt_strerror_long(int err)
+{
+	switch (err) {
+		default:
+		case FPGA_ERR_FAIL:
+		case FPGA_ERR_OK:
+			return NULL;
+
+		case FPGA_ERR_AFI_CMD_BUSY:
+			return long_help_FPGA_ERR_AFI_CMD_BUSY;
+		case FPGA_ERR_AFI_ID_INVALID:
+			return long_help_FPGA_ERR_AFI_ID_INVALID;
+		case FPGA_ERR_AFI_CMD_API_VERSION_INVALID:
+			return long_help_FPGA_ERR_AFI_CMD_API_VERSION_INVALID;
+		case FPGA_ERR_CL_ID_MISMATCH:
+			return long_help_FPGA_ERR_CL_ID_MISMATCH;
+		case FPGA_ERR_CL_DDR_CALIB_FAILED:
+			return long_help_FPGA_ERR_CL_DDR_CALIB_FAILED;
+		case FPGA_ERR_SHELL_MISMATCH:
+			return long_help_FPGA_ERR_SHELL_MISMATCH;
+		case FPGA_ERR_POWER_VIOLATION:
+			return long_help_FPGA_ERR_POWER_VIOLATION;
+		case FPGA_ERR_PCI_MISSING:
+			return long_help_FPGA_ERR_PCI_MISSING;
+		case FPGA_ERR_AFI_CMD_MALFORMED:
+			return long_help_FPGA_ERR_AFI_CMD_MALFORMED;
+		case -EINVAL:
+		case FPGA_ERR_SOFTWARE_PROBLEM:
+			return long_help_FPGA_ERR_SOFTWARE_PROBLEM;
+		case FPGA_ERR_UNRESPONSIVE:
+			return long_help_FPGA_ERR_UNRESPONSIVE;
+		case -ETIMEDOUT:
+			return long_help_ETIMEDOUT;
+	}
+}
+
 int fpga_mgmt_clear_local_image(int slot_id) 
 {
 	int ret;
@@ -174,6 +291,8 @@ int fpga_mgmt_clear_local_image_sync(int slot_id,
 {
 	struct fpga_mgmt_image_info tmp_info;
 	struct fpga_pci_resource_map app_map;
+	uint32_t prev_sh_version = 0;
+	uint32_t sh_version = 0;
 	uint32_t retries = 0;
 	bool done = false;
 	int status;
@@ -188,9 +307,12 @@ int fpga_mgmt_clear_local_image_sync(int slot_id,
 	memset(&tmp_info, 0, sizeof(tmp_info));
 
 	/** 
-	 * Get the current PCI resource map for the app_pf that will be used after 
-	 * the clear has completed.
+	 * Get the current SH version and PCI resource map for the app_pf 
+	 * that will be used after the clear has completed.
 	 */
+	ret = fpga_mgmt_get_sh_version(slot_id, &prev_sh_version);
+	fail_on(ret != 0, out, "fpga_mgmt_get_sh_version failed");
+
 	ret = fpga_pci_get_resource_map(slot_id, FPGA_APP_PF, &app_map);
 	fail_on(ret != 0, out, "fpga_pci_get_resource_map failed");
 
@@ -222,10 +344,15 @@ int fpga_mgmt_clear_local_image_sync(int slot_id,
 	}
 
 	/**
-	 * Do not perform a remove/rescan of the APP PF if the PCI IDs have not changed.
+	 * Do not perform a remove/rescan of the APP PF if the SH version and PCI IDs
+	 * have not changed.
 	 */
 	struct afi_device_ids *afi_device_ids = &tmp_info.ids.afi_device_ids;
-	if (!((afi_device_ids->vendor_id == app_map.vendor_id) &&
+	ret = fpga_mgmt_get_sh_version(slot_id, &sh_version);
+	fail_on(ret != 0, out, "fpga_mgmt_get_sh_version failed");
+
+	if ((sh_version != prev_sh_version) ||
+		!((afi_device_ids->vendor_id == app_map.vendor_id) &&
 			(afi_device_ids->device_id == app_map.device_id) &&
 			(afi_device_ids->svid == app_map.subsystem_vendor_id) &&
 			(afi_device_ids->ssid == app_map.subsystem_device_id))) {
@@ -233,7 +360,10 @@ int fpga_mgmt_clear_local_image_sync(int slot_id,
 		 * Perform a PCI device remove and recan in order to expose the default AFI 
 		 * Vendor and Device Id.
 		 */
-		log_info("remove+rescan required, expected_ids={0x%04x, 0x%04x, 0x%04x, 0x%04x}, sysfs_ids={0x%04x, 0x%04x, 0x%04x, 0x%04x}",
+		log_info("remove+rescan required, sh_version=0x%08x, prev_sh_version=0x%08x, "
+				"expected_ids={0x%04x, 0x%04x, 0x%04x, 0x%04x}, "
+				"sysfs_ids={0x%04x, 0x%04x, 0x%04x, 0x%04x}",
+				sh_version, prev_sh_version,
 				afi_device_ids->vendor_id, afi_device_ids->device_id, 
 				afi_device_ids->svid, afi_device_ids->ssid,
 				app_map.vendor_id, app_map.device_id, 
@@ -250,23 +380,47 @@ out:
 	return ret;
 }
 
-int fpga_mgmt_load_local_image(int slot_id, char *afi_id) 
+int fpga_mgmt_load_local_image(int slot_id, char *afi_id)
 {
+	return fpga_mgmt_load_local_image_flags(slot_id, afi_id, 0);
+}
+
+int fpga_mgmt_init_load_local_image_options(union fpga_mgmt_load_local_image_options *opt){
+	memset(opt, 0, sizeof(union fpga_mgmt_load_local_image_options));
+	return 0;
+}
+
+int fpga_mgmt_load_local_image_flags(int slot_id, char *afi_id, uint32_t flags)
+{
+	union fpga_mgmt_load_local_image_options opt;
+
+	fpga_mgmt_init_load_local_image_options(&opt);
+	opt.slot_id = slot_id;
+	opt.afi_id = afi_id;
+	opt.flags = flags;
+
+	return fpga_mgmt_load_local_image_with_options(&opt);
+}
+
+int fpga_mgmt_load_local_image_with_options(union fpga_mgmt_load_local_image_options *opt){
 	int ret;
 	uint32_t len;
 	union afi_cmd cmd;
 	union afi_cmd rsp;
 
-	fail_slot_id(slot_id, out, ret);
+	fail_slot_id(opt->slot_id, out, ret);
 
 	memset(&cmd, 0, sizeof(union afi_cmd));
 	memset(&rsp, 0, sizeof(union afi_cmd));
 
+	/* mask off any unsupported flags */
+	opt->flags &= FPGA_CMD_DRAM_DATA_RETENTION | FPGA_CMD_FORCE_SHELL_RELOAD;
+
 	/* initialize the command structure */
-	fpga_mgmt_cmd_init_load(&cmd, &len, afi_id);
+	fpga_mgmt_cmd_init_load(&cmd, &len, opt);
 
 	/* send the command and wait for the response */
-	ret = fpga_mgmt_process_cmd(slot_id, &cmd, &rsp, &len);
+	ret = fpga_mgmt_process_cmd(opt->slot_id, &cmd, &rsp, &len);
 	fail_on(ret, out, "fpga_mgmt_process_cmd failed");
 
 	/* the load command does not have an interesting response payload */
@@ -274,12 +428,36 @@ out:
 	return ret;
 }
 
-int fpga_mgmt_load_local_image_sync(int slot_id, char *afi_id, 
+int fpga_mgmt_load_local_image_sync(int slot_id, char *afi_id,
+		uint32_t timeout, uint32_t delay_msec,
+		struct fpga_mgmt_image_info *info) 
+{
+	return fpga_mgmt_load_local_image_sync_flags(slot_id, afi_id, 0,
+		timeout, delay_msec, info);
+}
+
+int fpga_mgmt_load_local_image_sync_flags(int slot_id, char *afi_id, uint32_t flags,
+		uint32_t timeout, uint32_t delay_msec,
+		struct fpga_mgmt_image_info *info) 
+{
+	union fpga_mgmt_load_local_image_options opt;
+
+	fpga_mgmt_init_load_local_image_options(&opt);
+	opt.slot_id = slot_id;
+	opt.afi_id = afi_id;
+	opt.flags = flags;
+
+	return fpga_mgmt_load_local_image_sync_with_options(&opt, timeout, delay_msec, info);
+
+}
+int fpga_mgmt_load_local_image_sync_with_options(union fpga_mgmt_load_local_image_options *opt,
 		uint32_t timeout, uint32_t delay_msec,
 		struct fpga_mgmt_image_info *info) 
 {
 	struct fpga_mgmt_image_info tmp_info;
 	struct fpga_pci_resource_map app_map;
+	uint32_t prev_sh_version = 0;
+	uint32_t sh_version = 0;
 	uint32_t retries = 0;
 	bool done = false;
 	int status;
@@ -294,27 +472,30 @@ int fpga_mgmt_load_local_image_sync(int slot_id, char *afi_id,
 	memset(&tmp_info, 0, sizeof(tmp_info));
 	
 	/** 
-	 * Get the current PCI resource map for the app_pf that will be used after 
-	 * the load has completed.
+	 * Get the current SH version and PCI resource map for the app_pf 
+	 * that will be used after the load has completed.
 	 */
-	ret = fpga_pci_get_resource_map(slot_id, FPGA_APP_PF, &app_map);
+	ret = fpga_mgmt_get_sh_version(opt->slot_id, &prev_sh_version);
+	fail_on(ret != 0, out, "fpga_mgmt_get_sh_version failed");
+
+	ret = fpga_pci_get_resource_map(opt->slot_id, FPGA_APP_PF, &app_map);
 	fail_on(ret != 0, out, "fpga_pci_get_resource_map failed");
 
 	/** Load the FPGA image (async completion) */
-	ret = fpga_mgmt_load_local_image(slot_id, afi_id);
+	ret = fpga_mgmt_load_local_image_with_options(opt);
 	fail_on(ret, out, "fpga_mgmt_load_local_image failed");
 
 	/** Wait until the status is "loaded" or timeout */
 	while (!done) {
-		ret = fpga_mgmt_describe_local_image(slot_id, &tmp_info, 0); /** flags==0 */
+		ret = fpga_mgmt_describe_local_image(opt->slot_id, &tmp_info, 0); /** flags==0 */
 
 		status = (ret == 0) ? tmp_info.status : FPGA_STATUS_END;
 		if (status == FPGA_STATUS_LOADED) {
 			/** Sanity check the afi_id */
-			ret = (strncmp(afi_id, tmp_info.ids.afi_id, sizeof(tmp_info.ids.afi_id))) ? 
+			ret = (strncmp(opt->afi_id, tmp_info.ids.afi_id, sizeof(tmp_info.ids.afi_id))) ? 
 				FPGA_ERR_FAIL : 0; 
 			fail_on(ret, out, "AFI ID mismatch: requested afi_id=%s, loaded afi_id=%s",
-					afi_id, tmp_info.ids.afi_id);
+					opt->afi_id, tmp_info.ids.afi_id);
 			done = true;
 		} else if (status == FPGA_STATUS_BUSY) {
 			fail_on(ret = (retries >= timeout_tmp) ? -ETIMEDOUT : 0, out, 
@@ -333,10 +514,15 @@ int fpga_mgmt_load_local_image_sync(int slot_id, char *afi_id,
 	}
 
 	/**
-	 * Do not perform a remove/rescan of the APP PF if the PCI IDs have not changed.
+	 * Do not perform a remove/rescan of the APP PF if the SH version and PCI IDs
+	 * have not changed.
 	 */
 	struct afi_device_ids *afi_device_ids = &tmp_info.ids.afi_device_ids;
-	if (!((afi_device_ids->vendor_id == app_map.vendor_id) &&
+	ret = fpga_mgmt_get_sh_version(opt->slot_id, &sh_version);
+	fail_on(ret != 0, out, "fpga_mgmt_get_sh_version failed");
+
+	if ((sh_version != prev_sh_version) ||
+		!((afi_device_ids->vendor_id == app_map.vendor_id) &&
 			(afi_device_ids->device_id == app_map.device_id) &&
 			(afi_device_ids->svid == app_map.subsystem_vendor_id) &&
 			(afi_device_ids->ssid == app_map.subsystem_device_id))) {
@@ -344,13 +530,16 @@ int fpga_mgmt_load_local_image_sync(int slot_id, char *afi_id,
 		 * Perform a PCI device remove and recan in order to expose the unique AFI 
 		 * Vendor and Device Id.
 		 */
-		log_info("remove+rescan required, expected_ids={0x%04x, 0x%04x, 0x%04x, 0x%04x}, sysfs_ids={0x%04x, 0x%04x, 0x%04x, 0x%04x}",
+		log_info("remove+rescan required, sh_version=0x%08x, prev_sh_version=0x%08x, "
+				"expected_ids={0x%04x, 0x%04x, 0x%04x, 0x%04x}, "
+				"sysfs_ids={0x%04x, 0x%04x, 0x%04x, 0x%04x}",
+				sh_version, prev_sh_version,
 				afi_device_ids->vendor_id, afi_device_ids->device_id, 
 				afi_device_ids->svid, afi_device_ids->ssid,
 				app_map.vendor_id, app_map.device_id, 
 				app_map.subsystem_vendor_id, app_map.subsystem_device_id);
 
-		ret = fpga_pci_rescan_slot_app_pfs(slot_id);
+		ret = fpga_pci_rescan_slot_app_pfs(opt->slot_id);
 		fail_on(ret, out, "fpga_pci_rescan_slot_app_pfs failed");
 	}
 

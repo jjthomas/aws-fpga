@@ -12,7 +12,7 @@
 ## limitations under the License.
 
 
-COMMON_REPO := $(SDK_DIR)/SDAccel/examples/xilinx
+COMMON_REPO := $(SDACCEL_DIR)/examples/xilinx
 
 include $(COMMON_REPO)/utility/boards.mk
 include $(COMMON_REPO)/libs/xcl/xcl.mk
@@ -53,6 +53,6 @@ CXXFLAGS += -O2
 endif
 
 # Compiler
-CXX := g++
+#CXX := g++
 
 include $(COMMON_REPO)/utility/rules.mk

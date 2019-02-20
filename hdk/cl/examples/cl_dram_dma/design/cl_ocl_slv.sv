@@ -29,6 +29,7 @@ module cl_ocl_slv (
    cfg_bus_t.slave ddrb_tst_cfg_bus,
    cfg_bus_t.slave ddrc_tst_cfg_bus,
    cfg_bus_t.slave ddrd_tst_cfg_bus,
+   cfg_bus_t.slave axi_mstr_cfg_bus,
    cfg_bus_t.slave int_tst_cfg_bus
 
 );
@@ -328,6 +329,10 @@ assign ddrd_tst_cfg_bus.wdata = slv_tst_wdata[4];
 assign ddrd_tst_cfg_bus.wr = slv_tst_wr[4];
 assign ddrd_tst_cfg_bus.rd = slv_tst_rd[4];
 
+assign axi_mstr_cfg_bus.addr = slv_tst_addr[5];
+assign axi_mstr_cfg_bus.wdata = slv_tst_wdata[5];
+assign axi_mstr_cfg_bus.wr = slv_tst_wr[5];
+assign axi_mstr_cfg_bus.rd = slv_tst_rd[5];
 
 assign int_tst_cfg_bus.addr = slv_tst_addr[13];
 assign int_tst_cfg_bus.wdata = slv_tst_wdata[13];
@@ -344,7 +349,7 @@ always_ff @(negedge sync_rst_n or posedge clk)
   else if (set_streaming_finished) begin
     streaming_active <= 0;
   end
-  else if (slv_tst_wr[5]) begin
+  else if (slv_tst_wr[6]) begin
     $display("streaming_active set!");
     streaming_active <= 1'b1;
     cycle_counter <= 0;
@@ -355,7 +360,7 @@ always_ff @(negedge sync_rst_n or posedge clk)
 
 
 always_ff @(negedge sync_rst_n or posedge clk)
-  if (slv_tst_rd[6]) begin
+  if (slv_tst_rd[7]) begin
     $display("cycle_counter read!");
   end
 
@@ -382,16 +387,19 @@ always_comb begin
   //for DDRD
   tst_slv_ack[4] = ddrd_tst_cfg_bus.ack;
   tst_slv_rdata[4] = ddrd_tst_cfg_bus.rdata;
+  //for AXI Master
+  tst_slv_ack[5] = axi_mstr_cfg_bus.ack;
+  tst_slv_rdata[5] = axi_mstr_cfg_bus.rdata;
   // for streaming_active
-  tst_slv_ack[5] = slv_tst_rd[5] | slv_tst_wr[5];
-  tst_slv_rdata[5] = streaming_active;
+  tst_slv_ack[6] = slv_tst_rd[6] | slv_tst_wr[6];
+  tst_slv_rdata[6] = streaming_active;
   // for cycle_counter
-  tst_slv_ack[6] = slv_tst_rd[6];
-  tst_slv_rdata[6] = cycle_counter;
+  tst_slv_ack[7] = slv_tst_rd[7];
+  tst_slv_rdata[7] = cycle_counter;
   //for int ATG
   tst_slv_ack[13] = int_tst_cfg_bus.ack;
   tst_slv_rdata[13] = int_tst_cfg_bus.rdata;
-  for(int i=7; i<13; i++) begin
+  for(int i=8; i<13; i++) begin
     tst_slv_ack[i] = 1'b1;
     tst_slv_rdata[i] = 32'hdead_beef;
   end

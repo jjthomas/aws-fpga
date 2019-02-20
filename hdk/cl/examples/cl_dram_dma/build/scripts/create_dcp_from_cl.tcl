@@ -37,7 +37,7 @@ set clock_recipe_b      [lindex $argv  9]
 set clock_recipe_c      [lindex $argv 10]
 set uram_option         [lindex $argv 11]
 set notify_via_sns      [lindex $argv 12]
-
+set VDEFINES            [lindex $argv 13]
 ##################################################
 ## Flow control variables 
 ##################################################
@@ -104,6 +104,11 @@ puts "All reports and intermediate results will be time stamped with $timestamp"
 
 set_msg_config -id {Chipscope 16-3} -suppress
 set_msg_config -string {AXI_QUAD_SPI} -suppress
+set_msg_config -string {PIPE_CL_SH_AURORA_STAT} -suppress
+set_msg_config -string {PIPE_CL_SH_HMC_STAT} -suppress
+set_msg_config -string {PIPE_AURORA_CHANNEL_UP} -suppress
+set_msg_config -string {PIPE_HMC_IIC} -suppress
+set_msg_config -string {PIPE_SH_CL_AURORA_STAT} -suppress
 
 # Suppress Warnings
 # These are to avoid warning messages that may not be real issues. A developer
@@ -123,7 +128,7 @@ set_msg_config -id {Vivado 12-4739}      -suppress
 set_msg_config -id {Vivado 12-5201}      -suppress
 set_msg_config -id {DRC CKLD-1}          -suppress
 set_msg_config -id {IP_Flow 19-2248}     -suppress
-set_msg_config -id {Opt 31-155}          -suppress
+#set_msg_config -id {Opt 31-155}          -suppress
 set_msg_config -id {Synth 8-115}         -suppress
 set_msg_config -id {Synth 8-3936}        -suppress
 set_msg_config -id {Vivado 12-1023}      -suppress
@@ -141,8 +146,6 @@ set_msg_config -id {Constraints 18-619}  -suppress
 set_msg_config -id {DRC CKLD-2}          -suppress
 set_msg_config -id {DRC REQP-1853}       -suppress
 set_msg_config -id {Timing 38-436}       -suppress
-
-puts "AWS FPGA: ([clock format [clock seconds] -format %T]) Calling the encrypt.tcl.";
 
 # Check that an email address has been set, else unset notify_via_sns
 
@@ -185,6 +188,8 @@ switch $strategy {
     }
 }
 
+puts "AWS FPGA: ([clock format [clock seconds] -format %T]) Calling the encrypt.tcl.";
+
 #Encrypt source code
 source encrypt.tcl
 
@@ -201,12 +206,20 @@ source $HDK_SHELL_DIR/build/scripts/step_user.tcl -notrace
 puts "AWS FPGA: ([clock format [clock seconds] -format %T]) Calling aws_gen_clk_constraints.tcl to generate clock constraints from developer's specified recipe.";
 
 source $HDK_SHELL_DIR/build/scripts/aws_gen_clk_constraints.tcl
+#################################################################
+##### Do not remove this setting. Need to workaround bug
+##################################################################
+set_param hd.clockRoutingWireReduction false
 
 ##################################################
 ### CL XPR OOC Synthesis
 ##################################################
 if {${cl.synth}} {
    source -notrace ./synth_${CL_MODULE}.tcl
+   set synth_dcp ${timestamp}.CL.post_synth.dcp
+} else {
+   open_checkpoint ../checkpoints/CL.post_synth.dcp
+   set synth_dcp CL.post_synth.dcp
 }
 
 ##################################################
@@ -223,8 +236,9 @@ if {$implement} {
       set_property IP_REPO_PATHS $cacheDir [current_project]
       puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - Combining Shell and CL design checkpoints";
       add_files $HDK_SHELL_DIR/build/checkpoints/from_aws/SH_CL_BB_routed.dcp
-      add_files $CL_DIR/build/checkpoints/${timestamp}.CL.post_synth.dcp
-      set_property SCOPED_TO_CELLS {CL} [get_files $CL_DIR/build/checkpoints/${timestamp}.CL.post_synth.dcp]
+      #add_files $CL_DIR/build/checkpoints/${timestamp}.CL.post_synth.dcp
+      add_files $CL_DIR/build/checkpoints/$synth_dcp
+      set_property SCOPED_TO_CELLS {WRAPPER_INST/CL} [get_files $CL_DIR/build/checkpoints/$synth_dcp]
 
       #Read the constraints, note *DO NOT* read cl_clocks_aws (clocks originating from AWS shell)
       read_xdc [ list \
@@ -233,7 +247,7 @@ if {$implement} {
       set_property PROCESSING_ORDER late [get_files cl_pnr_user.xdc]
 
       puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - Running link_design";
-      link_design -top $TOP -part [DEVICE_TYPE] -reconfig_partitions {SH CL}
+      link_design -top $TOP -part [DEVICE_TYPE] -reconfig_partitions {WRAPPER_INST/SH WRAPPER_INST/CL}
 
       puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - PLATFORM.IMPL==[get_property PLATFORM.IMPL [current_design]]";
       ##################################################
@@ -260,56 +274,62 @@ if {$implement} {
       }
    }
 
-#   ########################
-#   # CL Place
-#   ########################
-#   if {$place} {
-#      puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - Running placement";
-#      if {$psip} {
-#         append place_options " -fanout_opt"
-#      }
-#      impl_step place_design $TOP $place_options $place_directive $place_preHookTcl $place_postHookTcl
-#   }
-#
-#   ##############################
-#   # CL Post-Place Optimization
-#   ##############################
-#   if {$phys_opt} {
-#      puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - Running post-place optimization";
-#      impl_step phys_opt_design $TOP $phys_options $phys_directive $phys_preHookTcl $phys_postHookTcl
-#   }
-#
-#   ########################
-#   # CL Route
-#   ########################
-#   if {$route} {
-#      puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - Routing design";
-#      impl_step route_design $TOP $route_options $route_directive $route_preHookTcl $route_postHookTcl
-#   }
-#
-#   ##############################
-#   # CL Post-Route Optimization
-#   ##############################
-#   set SLACK [get_property SLACK [get_timing_paths]]
-#   #Post-route phys_opt will not be run if slack is positive or greater than -200ps.
-#   if {$route_phys_opt && $SLACK > -0.400 && $SLACK < 0} {
-#      puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - Running post-route optimization";
-#      impl_step route_phys_opt_design $TOP $post_phys_options $post_phys_directive $post_phys_preHookTcl $post_phys_postHookTcl
-#   }
-#
-#   ##############################
-#   # Final Implmentation Steps
-#   ##############################
-#   # Report final timing
-#   report_timing_summary -file $CL_DIR/build/reports/${timestamp}.SH_CL_final_timing_summary.rpt
-#
-#   # This is what will deliver to AWS
-#   puts "AWS FPGA: ([clock format [clock seconds] -format %T]) - Writing final DCP to to_aws directory.";
-#
-#   write_checkpoint -force $CL_DIR/build/checkpoints/to_aws/${timestamp}.SH_CL_routed.dcp
-#
-#   # Generate debug probes file
-#   write_debug_probes -force -no_partial_ltxfile -file $CL_DIR/build/checkpoints/${timestamp}.debug_probes.ltx
+   ########################
+   # CL Place
+   ########################
+   if {$place} {
+      puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - Running placement";
+      if {$psip} {
+         append place_options " -fanout_opt"
+      }
+      impl_step place_design $TOP $place_options $place_directive $place_preHookTcl $place_postHookTcl
+   }
+
+   ##############################
+   # CL Post-Place Optimization
+   ##############################
+   if {$phys_opt} {
+      puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - Running post-place optimization";
+      impl_step phys_opt_design $TOP $phys_options $phys_directive $phys_preHookTcl $phys_postHookTcl
+   }
+
+   ########################
+   # CL Route
+   ########################
+   if {$route} {
+      puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - Routing design";
+      impl_step route_design $TOP $route_options $route_directive $route_preHookTcl $route_postHookTcl
+   }
+
+   ##############################
+   # CL Post-Route Optimization
+   ##############################
+   set SLACK [get_property SLACK [get_timing_paths]]
+   #Post-route phys_opt will not be run if slack is positive or greater than -200ps.
+   if {$route_phys_opt && $SLACK > -0.400 && $SLACK < 0} {
+      puts "\nAWS FPGA: ([clock format [clock seconds] -format %T]) - Running post-route optimization";
+      impl_step route_phys_opt_design $TOP $post_phys_options $post_phys_directive $post_phys_preHookTcl $post_phys_postHookTcl
+   }
+
+#    ##############################
+#    # Final Implmentation Steps
+#    ##############################
+#    # Report final timing
+#    report_timing_summary -file $CL_DIR/build/reports/${timestamp}.SH_CL_final_timing_summary.rpt
+# 
+#    # This is what will deliver to AWS
+#    puts "AWS FPGA: ([clock format [clock seconds] -format %T]) - Writing final DCP to to_aws directory.";
+# 
+#    #FIXME -- THIS SHOULD BE REMOVED FROM THE FINAL SCRIPT
+#    #write_checkpoint -force $CL_DIR/build/checkpoints/to_aws/${timestamp}.SH_CL_routed_before_ddr_fix.dcp
+#    #source top_ddr_fix.tcl
+#    #checkpoint can used by developer for analysis and hence donot encrypt
+#    write_checkpoint -force $CL_DIR/build/checkpoints/${timestamp}.SH_CL_routed.dcp
+#    #checkpoint that will be sent to aws and hence encrypt
+#    write_checkpoint -encrypt -force $CL_DIR/build/checkpoints/to_aws/${timestamp}.SH_CL_routed.dcp
+# 
+#    # Generate debug probes file
+#    write_debug_probes -force -no_partial_ltxfile -file $CL_DIR/build/checkpoints/${timestamp}.debug_probes.ltx
 
    close_project
 }
@@ -322,11 +342,15 @@ if {$implement} {
 
 # puts "AWS FPGA: ([clock format [clock seconds] -format %T]) - Compress files for sending to AWS. "
 # 
+# 
 # # Create manifest file
 # set manifest_file [open "$CL_DIR/build/checkpoints/to_aws/${timestamp}.manifest.txt" w]
 # set hash [lindex [split [exec sha256sum $CL_DIR/build/checkpoints/to_aws/${timestamp}.SH_CL_routed.dcp] ] 0]
+# set TOOL_VERSION $::env(VIVADO_TOOL_VERSION)
+# set vivado_version [string range [version -short] 0 5]
+# puts "vivado_version is $vivado_version\n"
 # 
-# puts $manifest_file "manifest_format_version=1\n"
+# puts $manifest_file "manifest_format_version=2\n"
 # puts $manifest_file "pci_vendor_id=$vendor_id\n"
 # puts $manifest_file "pci_device_id=$device_id\n"
 # puts $manifest_file "pci_subsystem_id=$subsystem_id\n"
@@ -335,6 +359,7 @@ if {$implement} {
 # puts $manifest_file "shell_version=$shell_version\n"
 # puts $manifest_file "dcp_file_name=${timestamp}.SH_CL_routed.dcp\n"
 # puts $manifest_file "hdk_version=$hdk_version\n"
+# puts $manifest_file "tool_version=v$vivado_version\n"
 # puts $manifest_file "date=$timestamp\n"
 # puts $manifest_file "clock_recipe_a=$clock_recipe_a\n"
 # puts $manifest_file "clock_recipe_b=$clock_recipe_b\n"
@@ -353,12 +378,12 @@ if {$implement} {
 # tar::create to_aws/${timestamp}.Developer_CL.tar [glob to_aws/${timestamp}*]
 # 
 # puts "AWS FPGA: ([clock format [clock seconds] -format %T]) - Finished creating final tar file in to_aws directory.";
-
-if {[string compare $notify_via_sns "1"] == 0} {
-  puts "AWS FPGA: ([clock format [clock seconds] -format %T]) - Calling notification script to send e-mail to $env(EMAIL)";
-  exec $env(HDK_COMMON_DIR)/scripts/notify_via_sns.py
-}
-
-puts "AWS FPGA: ([clock format [clock seconds] -format %T]) - Build complete.";
+# 
+# if {[string compare $notify_via_sns "1"] == 0} {
+#   puts "AWS FPGA: ([clock format [clock seconds] -format %T]) - Calling notification script to send e-mail to $env(EMAIL)";
+#   exec $env(AWS_FPGA_REPO_DIR)/shared/bin/scripts/notify_via_sns.py
+# }
+# 
+# puts "AWS FPGA: ([clock format [clock seconds] -format %T]) - Build complete.";
 
 
