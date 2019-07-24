@@ -274,7 +274,7 @@ if {$implement} {
       }
    }
 
-   source /home/jamestho/adjust_cl_pblocks.tcl
+   # source /home/jamestho/adjust_cl_pblocks.tcl
 
    ########################
    # CL Place
