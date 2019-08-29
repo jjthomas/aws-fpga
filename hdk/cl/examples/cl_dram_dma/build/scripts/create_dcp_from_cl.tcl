@@ -239,6 +239,10 @@ if {$implement} {
       #add_files $CL_DIR/build/checkpoints/${timestamp}.CL.post_synth.dcp
       add_files $CL_DIR/build/checkpoints/$synth_dcp
       set_property SCOPED_TO_CELLS {WRAPPER_INST/CL} [get_files $CL_DIR/build/checkpoints/$synth_dcp]
+      add_files /home/jamestho/if_shell_routed.dcp
+      set_property SCOPED_TO_CELLS {WRAPPER_INST/CL/streaming_wrapper} [get_files /home/jamestho/if_shell_routed.dcp]
+      # add_files /home/jamestho/stream_rtl/passthrough_2.dcp
+      # set_property SCOPED_TO_CELLS {WRAPPER_INST/CL/streaming_wrapper} [get_files /home/jamestho/stream_rtl/passthrough_2.dcp]
 
       #Read the constraints, note *DO NOT* read cl_clocks_aws (clocks originating from AWS shell)
       read_xdc [ list \
@@ -275,6 +279,10 @@ if {$implement} {
    }
 
    # source /home/jamestho/adjust_cl_pblocks.tcl
+   # set_property HD.PARTPIN_RANGE CLOCKREGION_X3Y0:CLOCKREGION_X3Y9 [get_ports -of_objects [get_cells WRAPPER_INST/CL]]
+   # read_checkpoint -cell WRAPPER_INST/CL/streaming_wrapper /home/jamestho/if_shell.dcp
+   # remove_net [get_nets -hierarchical -filter NAME=~WRAPPER_INST/CL/streaming_wrapper/*_kif]
+   source /home/jamestho/adjust_cl_pblocks_for_shell.tcl
 
    ########################
    # CL Place
@@ -313,6 +321,14 @@ if {$implement} {
       impl_step route_phys_opt_design $TOP $post_phys_options $post_phys_directive $post_phys_preHookTcl $post_phys_postHookTcl
    }
 
+   write_debug_probes -force -no_partial_ltxfile -file $CL_DIR/build/checkpoints/${timestamp}.debug_probes.ltx
+
+   write_checkpoint -force -cell WRAPPER_INST/CL /home/jamestho/2_hole_cl.dcp
+   update_design -black_box -cell WRAPPER_INST/CL
+   write_checkpoint -force /home/jamestho/2_hole_shell.dcp
+   open_checkpoint /home/jamestho/2_hole_cl.dcp
+   write_edif -force /home/jamestho/2_hole_cl.edf
+
 #    ##############################
 #    # Final Implmentation Steps
 #    ##############################
@@ -331,7 +347,6 @@ if {$implement} {
 #    write_checkpoint -encrypt -force $CL_DIR/build/checkpoints/to_aws/${timestamp}.SH_CL_routed.dcp
 # 
 #    # Generate debug probes file
-#    write_debug_probes -force -no_partial_ltxfile -file $CL_DIR/build/checkpoints/${timestamp}.debug_probes.ltx
 
    close_project
 }

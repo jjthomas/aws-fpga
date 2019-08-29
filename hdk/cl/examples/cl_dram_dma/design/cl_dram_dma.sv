@@ -188,6 +188,82 @@ always_ff @(negedge sync_rst_n or posedge clk)
   .io_finished(sw_finished)
 );
 
+/*
+cl_debug_bridge CL_DEBUG_BRIDGE (
+     .clk(clk),
+     .S_BSCAN_drck(drck),
+     .S_BSCAN_shift(shift),
+     .S_BSCAN_tdi(tdi),
+     .S_BSCAN_update(update),
+     .S_BSCAN_sel(sel),
+     .S_BSCAN_tdo(tdo),
+     .S_BSCAN_tms(tms),
+     .S_BSCAN_tck(tck),
+     .S_BSCAN_runtest(runtest),
+     .S_BSCAN_reset(reset),
+     .S_BSCAN_capture(capture),
+     .S_BSCAN_bscanid_en(bscanid_en)
+  );
+
+ila_1 streaming_wrapper_ila (
+                .clk    (clk),
+                .probe0 (sw_cl_sh_ddr_awvalid),
+                .probe1 (sw_cl_sh_ddr_awaddr),
+                .probe2 (2'b0),
+                .probe3 (sw_cl_sh_ddr_awready),
+                .probe4 (sw_cl_sh_ddr_wvalid),
+                .probe5 (64'b0),
+                .probe6 (sw_cl_sh_ddr_wlast),
+                .probe7 (sw_cl_sh_ddr_wready),
+                .probe8 (1'b0),
+                .probe9 (1'b0),
+                .probe10 (sw_cl_sh_ddr_wdata),
+                .probe11 (1'b0),
+                .probe12 (sw_cl_sh_ddr_arready),
+                .probe13 (2'b0),
+                .probe14 (sw_cl_sh_ddr_rdata),
+                .probe15 (sw_cl_sh_ddr_araddr),
+                .probe16 (sw_cl_sh_ddr_arvalid),
+                .probe17 (3'b0),
+                .probe18 (3'b0),
+                .probe19 (sw_cl_sh_ddr_awid),
+                .probe20 (5'b0),
+                .probe21 (sw_cl_sh_ddr_awlen),
+                .probe22 (1'b0),
+                .probe23 (3'b0), 
+                .probe24 (2'b0),
+                .probe25 (5'b0),
+                .probe26 (sw_cl_sh_ddr_rvalid),
+                .probe27 (sw_cl_sh_ddr_arlen),
+                .probe28 (3'b0),
+                .probe29 (2'b0),
+                .probe30 (sw_cl_sh_ddr_rready),
+                .probe31 (4'b0),
+                .probe32 (4'b0),
+                .probe33 (4'b0),
+                .probe34 (4'b0),
+                .probe35 (1'b0),
+                .probe36 (4'b0),
+                .probe37 (4'b0),
+                .probe38 (5'b0),
+                .probe39 (1'b0),
+                .probe40 (sw_reset),
+                .probe41 (sw_finished),
+                .probe42 (1'b0),
+                .probe43 (1'b0)
+                );
+
+ila_0 streaming_wrapper_ila (
+                .clk    (clk),
+                .probe0 (sw_reset),
+                .probe1 (64'b0),
+                .probe2 (sw_finished),
+                .probe3 (sw_cl_sh_ddr_awready),
+                .probe4 (64'b0),
+                .probe5 (sw_cl_sh_ddr_awvalid)
+);
+*/
+
 assign cl_sh_ddr_awid = sw_reset_done ? sw_cl_sh_ddr_awid : sh_cl_dma_pcis_awid;
 assign cl_sh_ddr_awaddr = sw_reset_done ? sw_cl_sh_ddr_awaddr : sh_cl_dma_pcis_awaddr;
 assign cl_sh_ddr_awlen = sw_reset_done ? sw_cl_sh_ddr_awlen : sh_cl_dma_pcis_awlen;
