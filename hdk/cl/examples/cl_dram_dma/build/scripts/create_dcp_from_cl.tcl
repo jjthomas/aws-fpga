@@ -239,8 +239,8 @@ if {$implement} {
       #add_files $CL_DIR/build/checkpoints/${timestamp}.CL.post_synth.dcp
       add_files $CL_DIR/build/checkpoints/$synth_dcp
       set_property SCOPED_TO_CELLS {WRAPPER_INST/CL} [get_files $CL_DIR/build/checkpoints/$synth_dcp]
-      add_files /home/jamestho/if_shell_routed.dcp
-      set_property SCOPED_TO_CELLS {WRAPPER_INST/CL/streaming_wrapper} [get_files /home/jamestho/if_shell_routed.dcp]
+      add_files /home/jamestho/floorplanning/if_shell_routed.dcp
+      set_property SCOPED_TO_CELLS {WRAPPER_INST/CL/streaming_wrapper} [get_files /home/jamestho/floorplanning/if_shell_routed.dcp]
       # add_files /home/jamestho/stream_rtl/passthrough_2.dcp
       # set_property SCOPED_TO_CELLS {WRAPPER_INST/CL/streaming_wrapper} [get_files /home/jamestho/stream_rtl/passthrough_2.dcp]
 
@@ -267,6 +267,9 @@ if {$implement} {
       write_checkpoint -force $CL_DIR/build/checkpoints/${timestamp}.post_link.dcp
    }
 
+   # lock_design -level routing
+   set_property IS_ROUTE_FIXED 1 [get_nets -hierarchical -filter NAME=~*if*/*_sif]
+
    ########################
    # CL Optimize
    ########################
@@ -282,7 +285,15 @@ if {$implement} {
    # set_property HD.PARTPIN_RANGE CLOCKREGION_X3Y0:CLOCKREGION_X3Y9 [get_ports -of_objects [get_cells WRAPPER_INST/CL]]
    # read_checkpoint -cell WRAPPER_INST/CL/streaming_wrapper /home/jamestho/if_shell.dcp
    # remove_net [get_nets -hierarchical -filter NAME=~WRAPPER_INST/CL/streaming_wrapper/*_kif]
-   source /home/jamestho/adjust_cl_pblocks_for_shell.tcl
+   # source /home/jamestho/adjust_cl_pblocks_for_shell.tcl
+
+   create_pblock pblock_sw_shell
+   resize_pblock pblock_sw_shell -add [get_property GRID_RANGES [get_pblocks pblock_CL]]
+   resize_pblock pblock_sw_shell -remove {CLOCKREGION_X0Y10:CLOCKREGION_X5Y14 CLOCKREGION_X0Y0:CLOCKREGION_X1Y9}
+   set_property PARENT pblock_CL [get_pblock pblock_sw_shell]
+   add_cells_to_pblock pblock_sw_shell [get_cells -hierarchical -filter {NAME=~WRAPPER_INST/CL/* && NAME!~WRAPPER_INST/CL/SH_DDR* && NAME!~WRAPPER_INST/CL/streaming_wrapper*}]
+   add_cells_to_pblock pblock_sw_shell [get_cells -hierarchical -filter NAME=~WRAPPER_INST/CL/streaming_wrapper/shell*]
+   set_property CONTAIN_ROUTING 1 [get_pblocks pblock_sw_shell]
 
    ########################
    # CL Place
@@ -324,8 +335,8 @@ if {$implement} {
    write_debug_probes -force -no_partial_ltxfile -file $CL_DIR/build/checkpoints/${timestamp}.debug_probes.ltx
 
    write_checkpoint -force -cell WRAPPER_INST/CL /home/jamestho/2_hole_cl.dcp
-   update_design -black_box -cell WRAPPER_INST/CL
-   write_checkpoint -force /home/jamestho/2_hole_shell.dcp
+   # update_design -black_box -cell WRAPPER_INST/CL
+   # write_checkpoint -force /home/jamestho/2_hole_shell.dcp
    open_checkpoint /home/jamestho/2_hole_cl.dcp
    write_edif -force /home/jamestho/2_hole_cl.edf
 

@@ -147,19 +147,28 @@ logic sw_cl_sh_ddr_wvalid;
 logic sw_cl_sh_ddr_wlast;
 logic sw_cl_sh_ddr_wready;
 
+logic [4:0] sw_reset_counter;
+
 always_ff @(negedge sync_rst_n or posedge clk)
   if (!sync_rst_n) begin
     sw_reset <= 0;
     sw_reset_done <= 0;
+    sw_reset_counter <= 0;
   end
   else if (sw_reset_done && sw_finished) begin
     $display("sw_reset_done back to 0!");
     sw_reset_done <= 0;
   end
-  else if (sw_reset) begin
-    $display("sw_reset_done set!");
+  else if (sw_reset || sw_reset_counter > 0) begin
     sw_reset <= 0;
-    sw_reset_done <= 1'b1;
+    if (sw_reset_counter == 5'd31) begin
+      $display("sw_reset_done set!");
+      sw_reset_done <= 1'b1;
+      sw_reset_counter <= 0;
+    end
+    else begin
+      sw_reset_counter <= sw_reset_counter + 5'd1;
+    end
   end
   else if (streaming_active && !sw_reset_done) begin
     $display("sw_reset set!");
