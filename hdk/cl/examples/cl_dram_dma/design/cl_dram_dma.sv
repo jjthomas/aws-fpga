@@ -175,7 +175,7 @@ always_ff @(negedge sync_rst_n or posedge clk)
     sw_reset <= 1'b1;
   end
 
-(* DONT_TOUCH = "yes" *) StreamingWrapper streaming_wrapper(
+StreamingWrapper streaming_wrapper(
   .clock(clk),
   .reset(sw_reset),
   .io_inputMemAddrs_0(sw_cl_sh_ddr_araddr),
