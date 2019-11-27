@@ -38,6 +38,7 @@ set clock_recipe_c      [lindex $argv 10]
 set uram_option         [lindex $argv 11]
 set notify_via_sns      [lindex $argv 12]
 set VDEFINES            [lindex $argv 13]
+set io_dir              [lindex $argv 14]
 ##################################################
 ## Flow control variables 
 ##################################################
@@ -239,8 +240,8 @@ if {$implement} {
       #add_files $CL_DIR/build/checkpoints/${timestamp}.CL.post_synth.dcp
       add_files $CL_DIR/build/checkpoints/$synth_dcp
       set_property SCOPED_TO_CELLS {WRAPPER_INST/CL} [get_files $CL_DIR/build/checkpoints/$synth_dcp]
-      add_files /home/jamestho/floorplanning/if_shell_routed.dcp
-      set_property SCOPED_TO_CELLS {WRAPPER_INST/CL/streaming_wrapper} [get_files /home/jamestho/floorplanning/if_shell_routed.dcp]
+      add_files $io_dir/if_shell_routed.dcp
+      set_property SCOPED_TO_CELLS {WRAPPER_INST/CL/streaming_wrapper} [get_files $io_dir/if_shell_routed.dcp]
       # add_files /home/jamestho/stream_rtl/passthrough_2.dcp
       # set_property SCOPED_TO_CELLS {WRAPPER_INST/CL/streaming_wrapper} [get_files /home/jamestho/stream_rtl/passthrough_2.dcp]
 
@@ -289,8 +290,8 @@ if {$implement} {
 
    create_pblock pblock_sw_shell
    resize_pblock pblock_sw_shell -add [get_property GRID_RANGES [get_pblocks pblock_CL]]
-   resize_pblock pblock_sw_shell -remove {CLOCKREGION_X0Y10:CLOCKREGION_X5Y14 CLOCKREGION_X0Y0:CLOCKREGION_X1Y9}
-   set_property PARENT pblock_CL [get_pblock pblock_sw_shell]
+   resize_pblock pblock_sw_shell -remove {CLOCKREGION_X0Y10:CLOCKREGION_X5Y14 CLOCKREGION_X0Y0:CLOCKREGION_X2Y9}
+   set_property PARENT pblock_CL [get_pblocks pblock_sw_shell]
    add_cells_to_pblock pblock_sw_shell [get_cells -hierarchical -filter {NAME=~WRAPPER_INST/CL/* && NAME!~WRAPPER_INST/CL/SH_DDR* && NAME!~WRAPPER_INST/CL/streaming_wrapper*}]
    add_cells_to_pblock pblock_sw_shell [get_cells -hierarchical -filter NAME=~WRAPPER_INST/CL/streaming_wrapper/shell*]
    set_property CONTAIN_ROUTING 1 [get_pblocks pblock_sw_shell]
@@ -334,11 +335,9 @@ if {$implement} {
 
    write_debug_probes -force -no_partial_ltxfile -file $CL_DIR/build/checkpoints/${timestamp}.debug_probes.ltx
 
-   write_checkpoint -force -cell WRAPPER_INST/CL /home/jamestho/2_hole_cl.dcp
-   # update_design -black_box -cell WRAPPER_INST/CL
-   # write_checkpoint -force /home/jamestho/2_hole_shell.dcp
-   open_checkpoint /home/jamestho/2_hole_cl.dcp
-   write_edif -force /home/jamestho/2_hole_cl.edf
+   write_checkpoint -force -cell WRAPPER_INST/CL $io_dir/cl_with_holes.dcp
+   open_checkpoint $io_dir/cl_with_holes.dcp
+   write_edif -force $io_dir/cl_with_holes.edf
 
 #    ##############################
 #    # Final Implmentation Steps
