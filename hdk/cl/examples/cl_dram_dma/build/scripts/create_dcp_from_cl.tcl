@@ -37,8 +37,8 @@ set clock_recipe_b      [lindex $argv  9]
 set clock_recipe_c      [lindex $argv 10]
 set uram_option         [lindex $argv 11]
 set notify_via_sns      [lindex $argv 12]
-set VDEFINES            [lindex $argv 13]
-set io_dir              [lindex $argv 14]
+set io_dir              [lindex $argv 13]
+set VDEFINES            [lindex $argv 14]
 ##################################################
 ## Flow control variables 
 ##################################################
@@ -336,6 +336,10 @@ if {$implement} {
    write_debug_probes -force -no_partial_ltxfile -file $CL_DIR/build/checkpoints/${timestamp}.debug_probes.ltx
 
    write_checkpoint -force -cell WRAPPER_INST/CL $io_dir/cl_with_holes.dcp
+   if ![file exists ../checkpoints/fleet_shell.dcp] {
+     update_design -black_box -cell WRAPPER_INST/CL
+     write_checkpoint ../checkpoints/fleet_shell.dcp
+   }
    open_checkpoint $io_dir/cl_with_holes.dcp
    write_edif -force $io_dir/cl_with_holes.edf
 
