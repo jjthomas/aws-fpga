@@ -274,6 +274,8 @@ if {$implement} {
    if !$monolithic_flow {
      # lock_design -level routing
      set_property IS_ROUTE_FIXED 1 [get_nets -hierarchical -filter NAME=~*if*/*_sif]
+     set_property IS_LOC_FIXED 1 [get_cells -hierarchical -filter NAME=~*if*/klut*]
+     set_property IS_LOC_FIXED 1 [get_cells -hierarchical -filter NAME=~*if*/sff*]
    }
 
    ########################
