@@ -13,7 +13,7 @@
 // implied. See the License for the specific language governing permissions and
 // limitations under the License.
 
-module cl_dram_dma #(parameter NUM_DDR=1) 
+module cl_dram_dma #(parameter NUM_DDR=2)
 
 (
    `include "cl_ports.vh"
@@ -33,7 +33,6 @@ module cl_dram_dma #(parameter NUM_DDR=1)
 `include "unused_sh_bar1_template.inc"
 `include "unused_apppf_irq_template.inc"
 `include "unused_cl_sda_template.inc"
-`include "unused_ddr_a_b_d_template.inc"
 `include "unused_flr_template.inc"
 `include "unused_pcim_template.inc"
 
@@ -93,6 +92,7 @@ logic sw_finished;
 logic streaming_active;
 logic sw_reset;
 logic sw_reset_done;
+logic sw_ddr_c;
 
 assign sh_ocl_bus.awvalid = sh_ocl_awvalid;
 assign sh_ocl_bus.awaddr[31:0] = sh_ocl_awaddr;
@@ -112,15 +112,14 @@ assign ocl_sh_rresp = sh_ocl_bus.rresp;
 assign ocl_sh_rdata = sh_ocl_bus.rdata[31:0];
 assign sh_ocl_bus.rready = sh_ocl_rready;
 
-(* dont_touch = "true" *) logic ocl_slv_sync_rst_n;
-lib_pipe #(.WIDTH(1), .STAGES(4)) OCL_SLV_SLC_RST_N (.clk(clk), .rst_n(1'b1), .in_bus(sync_rst_n), .out_bus(ocl_slv_sync_rst_n));
 cl_ocl_slv CL_OCL_SLV (
 
    .clk(clk),
-   .sync_rst_n(ocl_slv_sync_rst_n),
+   .sync_rst_n(sync_rst_n),
 
    .set_streaming_finished(sw_finished && sw_reset_done),
    .streaming_active(streaming_active),
+   .sw_ddr_c(sw_ddr_c),
 
    .sh_ocl_bus  (sh_ocl_bus)
 );
@@ -132,14 +131,14 @@ cl_ocl_slv CL_OCL_SLV (
 // TODO add register bank for these signals
 logic[63:0] sw_cl_sh_ddr_araddr;
 logic sw_cl_sh_ddr_arvalid;
-logic[8:0] sw_cl_sh_ddr_arlen;
+logic[7:0] sw_cl_sh_ddr_arlen;
 logic sw_cl_sh_ddr_arready;
 logic[511:0] sw_cl_sh_ddr_rdata;
 logic sw_cl_sh_ddr_rvalid;
 logic sw_cl_sh_ddr_rready;
 logic[63:0] sw_cl_sh_ddr_awaddr;
 logic sw_cl_sh_ddr_awvalid;
-logic[8:0] sw_cl_sh_ddr_awlen;
+logic[7:0] sw_cl_sh_ddr_awlen;
 logic[15:0] sw_cl_sh_ddr_awid;
 logic sw_cl_sh_ddr_awready;
 logic[511:0] sw_cl_sh_ddr_wdata;
@@ -147,28 +146,19 @@ logic sw_cl_sh_ddr_wvalid;
 logic sw_cl_sh_ddr_wlast;
 logic sw_cl_sh_ddr_wready;
 
-logic [4:0] sw_reset_counter;
-
 always_ff @(negedge sync_rst_n or posedge clk)
   if (!sync_rst_n) begin
     sw_reset <= 0;
     sw_reset_done <= 0;
-    sw_reset_counter <= 0;
   end
   else if (sw_reset_done && sw_finished) begin
     $display("sw_reset_done back to 0!");
     sw_reset_done <= 0;
   end
-  else if (sw_reset || sw_reset_counter > 0) begin
+  else if (sw_reset) begin
     sw_reset <= 0;
-    if (sw_reset_counter == 5'd31) begin
-      $display("sw_reset_done set!");
-      sw_reset_done <= 1'b1;
-      sw_reset_counter <= 0;
-    end
-    else begin
-      sw_reset_counter <= sw_reset_counter + 5'd1;
-    end
+    $display("sw_reset_done set!");
+    sw_reset_done <= 1'b1;
   end
   else if (streaming_active && !sw_reset_done) begin
     $display("sw_reset set!");
@@ -178,133 +168,242 @@ always_ff @(negedge sync_rst_n or posedge clk)
 StreamingWrapper streaming_wrapper(
   .clock(clk),
   .reset(sw_reset),
-  .io_inputMemAddrs_0(sw_cl_sh_ddr_araddr),
-  .io_inputMemAddrValids_0(sw_cl_sh_ddr_arvalid),
-  .io_inputMemAddrLens_0(sw_cl_sh_ddr_arlen),
-  .io_inputMemAddrReadys_0(sw_cl_sh_ddr_arready),
-  .io_inputMemBlocks_0(sw_cl_sh_ddr_rdata),
-  .io_inputMemBlockValids_0(sw_cl_sh_ddr_rvalid),
-  .io_inputMemBlockReadys_0(sw_cl_sh_ddr_rready),
-  .io_outputMemAddrs_0(sw_cl_sh_ddr_awaddr),
-  .io_outputMemAddrValids_0(sw_cl_sh_ddr_awvalid),
-  .io_outputMemAddrLens_0(sw_cl_sh_ddr_awlen),
-  .io_outputMemAddrIds_0(sw_cl_sh_ddr_awid),
-  .io_outputMemAddrReadys_0(sw_cl_sh_ddr_awready),
-  .io_outputMemBlocks_0(sw_cl_sh_ddr_wdata),
-  .io_outputMemBlockValids_0(sw_cl_sh_ddr_wvalid),
-  .io_outputMemBlockLasts_0(sw_cl_sh_ddr_wlast),
-  .io_outputMemBlockReadys_0(sw_cl_sh_ddr_wready),
+  .io_inputMemAddr(sw_cl_sh_ddr_araddr),
+  .io_inputMemAddrValid(sw_cl_sh_ddr_arvalid),
+  .io_inputMemAddrLen(sw_cl_sh_ddr_arlen),
+  .io_inputMemAddrReady(sw_cl_sh_ddr_arready),
+  .io_inputMemBlock(sw_cl_sh_ddr_rdata),
+  .io_inputMemBlockValid(sw_cl_sh_ddr_rvalid),
+  .io_inputMemBlockReady(sw_cl_sh_ddr_rready),
+  .io_outputMemAddr(sw_cl_sh_ddr_awaddr),
+  .io_outputMemAddrValid(sw_cl_sh_ddr_awvalid),
+  .io_outputMemAddrLen(sw_cl_sh_ddr_awlen),
+  .io_outputMemAddrId(sw_cl_sh_ddr_awid),
+  .io_outputMemAddrReady(sw_cl_sh_ddr_awready),
+  .io_outputMemBlock(sw_cl_sh_ddr_wdata),
+  .io_outputMemBlockValid(sw_cl_sh_ddr_wvalid),
+  .io_outputMemBlockLast(sw_cl_sh_ddr_wlast),
+  .io_outputMemBlockReady(sw_cl_sh_ddr_wready),
   .io_finished(sw_finished)
 );
 
-/*
-cl_debug_bridge CL_DEBUG_BRIDGE (
-     .clk(clk),
-     .S_BSCAN_drck(drck),
-     .S_BSCAN_shift(shift),
-     .S_BSCAN_tdi(tdi),
-     .S_BSCAN_update(update),
-     .S_BSCAN_sel(sel),
-     .S_BSCAN_tdo(tdo),
-     .S_BSCAN_tms(tms),
-     .S_BSCAN_tck(tck),
-     .S_BSCAN_runtest(runtest),
-     .S_BSCAN_reset(reset),
-     .S_BSCAN_capture(capture),
-     .S_BSCAN_bscanid_en(bscanid_en)
-  );
+logic[15:0] cl_sh_ddr_awid_2d[2:0];
+logic[63:0] cl_sh_ddr_awaddr_2d[2:0];
+logic[7:0] cl_sh_ddr_awlen_2d[2:0];
+logic[2:0] cl_sh_ddr_awsize_2d[2:0];
+logic[1:0] cl_sh_ddr_awburst_2d[2:0];
+logic cl_sh_ddr_awvalid_2d [2:0];
+logic[2:0] sh_cl_ddr_awready_2d;
 
-ila_1 streaming_wrapper_ila (
-                .clk    (clk),
-                .probe0 (sw_cl_sh_ddr_awvalid),
-                .probe1 (sw_cl_sh_ddr_awaddr),
-                .probe2 (2'b0),
-                .probe3 (sw_cl_sh_ddr_awready),
-                .probe4 (sw_cl_sh_ddr_wvalid),
-                .probe5 (64'b0),
-                .probe6 (sw_cl_sh_ddr_wlast),
-                .probe7 (sw_cl_sh_ddr_wready),
-                .probe8 (1'b0),
-                .probe9 (1'b0),
-                .probe10 (sw_cl_sh_ddr_wdata),
-                .probe11 (1'b0),
-                .probe12 (sw_cl_sh_ddr_arready),
-                .probe13 (2'b0),
-                .probe14 (sw_cl_sh_ddr_rdata),
-                .probe15 (sw_cl_sh_ddr_araddr),
-                .probe16 (sw_cl_sh_ddr_arvalid),
-                .probe17 (3'b0),
-                .probe18 (3'b0),
-                .probe19 (sw_cl_sh_ddr_awid),
-                .probe20 (5'b0),
-                .probe21 (sw_cl_sh_ddr_awlen),
-                .probe22 (1'b0),
-                .probe23 (3'b0), 
-                .probe24 (2'b0),
-                .probe25 (5'b0),
-                .probe26 (sw_cl_sh_ddr_rvalid),
-                .probe27 (sw_cl_sh_ddr_arlen),
-                .probe28 (3'b0),
-                .probe29 (2'b0),
-                .probe30 (sw_cl_sh_ddr_rready),
-                .probe31 (4'b0),
-                .probe32 (4'b0),
-                .probe33 (4'b0),
-                .probe34 (4'b0),
-                .probe35 (1'b0),
-                .probe36 (4'b0),
-                .probe37 (4'b0),
-                .probe38 (5'b0),
-                .probe39 (1'b0),
-                .probe40 (sw_reset),
-                .probe41 (sw_finished),
-                .probe42 (1'b0),
-                .probe43 (1'b0)
-                );
+logic[15:0] cl_sh_ddr_wid_2d[2:0];
+logic[511:0] cl_sh_ddr_wdata_2d[2:0];
+logic[63:0] cl_sh_ddr_wstrb_2d[2:0];
+logic[2:0] cl_sh_ddr_wlast_2d;
+logic[2:0] cl_sh_ddr_wvalid_2d;
+logic[2:0] sh_cl_ddr_wready_2d;
 
-ila_0 streaming_wrapper_ila (
-                .clk    (clk),
-                .probe0 (sw_reset),
-                .probe1 (64'b0),
-                .probe2 (sw_finished),
-                .probe3 (sw_cl_sh_ddr_awready),
-                .probe4 (64'b0),
-                .probe5 (sw_cl_sh_ddr_awvalid)
-);
-*/
+logic[15:0] sh_cl_ddr_bid_2d[2:0];
+logic[1:0] sh_cl_ddr_bresp_2d[2:0];
+logic[2:0] sh_cl_ddr_bvalid_2d;
+logic[2:0] cl_sh_ddr_bready_2d;
 
-assign cl_sh_ddr_awid = sw_reset_done ? sw_cl_sh_ddr_awid : sh_cl_dma_pcis_awid;
-assign cl_sh_ddr_awaddr = sw_reset_done ? sw_cl_sh_ddr_awaddr : sh_cl_dma_pcis_awaddr;
-assign cl_sh_ddr_awlen = sw_reset_done ? sw_cl_sh_ddr_awlen : sh_cl_dma_pcis_awlen;
-assign cl_sh_ddr_awsize = sw_reset_done ? 3'b110 : sh_cl_dma_pcis_awsize;
-assign cl_sh_ddr_awvalid = sw_reset_done ? sw_cl_sh_ddr_awvalid : sh_cl_dma_pcis_awvalid;
-assign cl_sh_dma_pcis_awready = sw_reset_done ? 0 : sh_cl_ddr_awready;
-assign sw_cl_sh_ddr_awready = sw_reset_done ? sh_cl_ddr_awready : 0;
+logic[15:0] cl_sh_ddr_arid_2d[2:0];
+logic[63:0] cl_sh_ddr_araddr_2d[2:0];
+logic[7:0] cl_sh_ddr_arlen_2d[2:0];
+logic[2:0] cl_sh_ddr_arsize_2d[2:0];
+logic[1:0] cl_sh_ddr_arburst_2d[2:0];
+logic[2:0] cl_sh_ddr_arvalid_2d;
+logic[2:0] sh_cl_ddr_arready_2d;
+
+logic[15:0] sh_cl_ddr_rid_2d[2:0];
+logic[511:0] sh_cl_ddr_rdata_2d[2:0];
+logic[1:0] sh_cl_ddr_rresp_2d[2:0];
+logic[2:0] sh_cl_ddr_rlast_2d;
+logic[2:0] sh_cl_ddr_rvalid_2d;
+logic[2:0] cl_sh_ddr_rready_2d;
+
+sh_ddr #(
+         .DDR_A_PRESENT(0),
+         .DDR_B_PRESENT(1),
+         .DDR_D_PRESENT(0)
+   ) SH_DDR
+   (
+   .clk(clk),
+   .rst_n(sync_rst_n),
+
+   .stat_clk(clk),
+   .stat_rst_n(sync_rst_n),
+
+
+   .CLK_300M_DIMM0_DP(CLK_300M_DIMM0_DP),
+   .CLK_300M_DIMM0_DN(CLK_300M_DIMM0_DN),
+   .M_A_ACT_N(M_A_ACT_N),
+   .M_A_MA(M_A_MA),
+   .M_A_BA(M_A_BA),
+   .M_A_BG(M_A_BG),
+   .M_A_CKE(M_A_CKE),
+   .M_A_ODT(M_A_ODT),
+   .M_A_CS_N(M_A_CS_N),
+   .M_A_CLK_DN(M_A_CLK_DN),
+   .M_A_CLK_DP(M_A_CLK_DP),
+   .M_A_PAR(M_A_PAR),
+   .M_A_DQ(M_A_DQ),
+   .M_A_ECC(M_A_ECC),
+   .M_A_DQS_DP(M_A_DQS_DP),
+   .M_A_DQS_DN(M_A_DQS_DN),
+   .cl_RST_DIMM_A_N(cl_RST_DIMM_A_N),
+
+
+   .CLK_300M_DIMM1_DP(CLK_300M_DIMM1_DP),
+   .CLK_300M_DIMM1_DN(CLK_300M_DIMM1_DN),
+   .M_B_ACT_N(M_B_ACT_N),
+   .M_B_MA(M_B_MA),
+   .M_B_BA(M_B_BA),
+   .M_B_BG(M_B_BG),
+   .M_B_CKE(M_B_CKE),
+   .M_B_ODT(M_B_ODT),
+   .M_B_CS_N(M_B_CS_N),
+   .M_B_CLK_DN(M_B_CLK_DN),
+   .M_B_CLK_DP(M_B_CLK_DP),
+   .M_B_PAR(M_B_PAR),
+   .M_B_DQ(M_B_DQ),
+   .M_B_ECC(M_B_ECC),
+   .M_B_DQS_DP(M_B_DQS_DP),
+   .M_B_DQS_DN(M_B_DQS_DN),
+   .cl_RST_DIMM_B_N(cl_RST_DIMM_B_N),
+
+   .CLK_300M_DIMM3_DP(CLK_300M_DIMM3_DP),
+   .CLK_300M_DIMM3_DN(CLK_300M_DIMM3_DN),
+   .M_D_ACT_N(M_D_ACT_N),
+   .M_D_MA(M_D_MA),
+   .M_D_BA(M_D_BA),
+   .M_D_BG(M_D_BG),
+   .M_D_CKE(M_D_CKE),
+   .M_D_ODT(M_D_ODT),
+   .M_D_CS_N(M_D_CS_N),
+   .M_D_CLK_DN(M_D_CLK_DN),
+   .M_D_CLK_DP(M_D_CLK_DP),
+   .M_D_PAR(M_D_PAR),
+   .M_D_DQ(M_D_DQ),
+   .M_D_ECC(M_D_ECC),
+   .M_D_DQS_DP(M_D_DQS_DP),
+   .M_D_DQS_DN(M_D_DQS_DN),
+   .cl_RST_DIMM_D_N(cl_RST_DIMM_D_N),
+
+   //------------------------------------------------------
+   // DDR-4 Interface from CL (AXI-4)
+   //------------------------------------------------------
+   .cl_sh_ddr_awid(cl_sh_ddr_awid_2d),
+   .cl_sh_ddr_awaddr(cl_sh_ddr_awaddr_2d),
+   .cl_sh_ddr_awlen(cl_sh_ddr_awlen_2d),
+   .cl_sh_ddr_awsize(cl_sh_ddr_awsize_2d),
+   .cl_sh_ddr_awvalid(cl_sh_ddr_awvalid_2d),
+   .cl_sh_ddr_awburst(cl_sh_ddr_awburst_2d),
+   .sh_cl_ddr_awready(sh_cl_ddr_awready_2d),
+
+   .cl_sh_ddr_wid(cl_sh_ddr_wid_2d),
+   .cl_sh_ddr_wdata(cl_sh_ddr_wdata_2d),
+   .cl_sh_ddr_wstrb(cl_sh_ddr_wstrb_2d),
+   .cl_sh_ddr_wlast(cl_sh_ddr_wlast_2d),
+   .cl_sh_ddr_wvalid(cl_sh_ddr_wvalid_2d),
+   .sh_cl_ddr_wready(sh_cl_ddr_wready_2d),
+
+   .sh_cl_ddr_bid(sh_cl_ddr_bid_2d),
+   .sh_cl_ddr_bresp(sh_cl_ddr_bresp_2d),
+   .sh_cl_ddr_bvalid(sh_cl_ddr_bvalid_2d),
+   .cl_sh_ddr_bready(cl_sh_ddr_bready_2d),
+
+   .cl_sh_ddr_arid(cl_sh_ddr_arid_2d),
+   .cl_sh_ddr_araddr(cl_sh_ddr_araddr_2d),
+   .cl_sh_ddr_arlen(cl_sh_ddr_arlen_2d),
+   .cl_sh_ddr_arsize(cl_sh_ddr_arsize_2d),
+   .cl_sh_ddr_arvalid(cl_sh_ddr_arvalid_2d),
+   .cl_sh_ddr_arburst(cl_sh_ddr_arburst_2d),
+   .sh_cl_ddr_arready(sh_cl_ddr_arready_2d),
+
+   .sh_cl_ddr_rid(sh_cl_ddr_rid_2d),
+   .sh_cl_ddr_rdata(sh_cl_ddr_rdata_2d),
+   .sh_cl_ddr_rresp(sh_cl_ddr_rresp_2d),
+   .sh_cl_ddr_rlast(sh_cl_ddr_rlast_2d),
+   .sh_cl_ddr_rvalid(sh_cl_ddr_rvalid_2d),
+   .cl_sh_ddr_rready(cl_sh_ddr_rready_2d),
+
+   .sh_cl_ddr_is_ready(),
+
+   .sh_ddr_stat_addr0  (sh_ddr_stat_addr0) ,
+   .sh_ddr_stat_wr0    (sh_ddr_stat_wr0     ) ,
+   .sh_ddr_stat_rd0    (sh_ddr_stat_rd0     ) ,
+   .sh_ddr_stat_wdata0 (sh_ddr_stat_wdata0  ) ,
+   .ddr_sh_stat_ack0   (ddr_sh_stat_ack0    ) ,
+   .ddr_sh_stat_rdata0 (ddr_sh_stat_rdata0  ),
+   .ddr_sh_stat_int0   (ddr_sh_stat_int0    ),
+
+   .sh_ddr_stat_addr1  (sh_ddr_stat_addr1) ,
+   .sh_ddr_stat_wr1    (sh_ddr_stat_wr1     ) ,
+   .sh_ddr_stat_rd1    (sh_ddr_stat_rd1     ) ,
+   .sh_ddr_stat_wdata1 (sh_ddr_stat_wdata1  ) ,
+   .ddr_sh_stat_ack1   (ddr_sh_stat_ack1    ) ,
+   .ddr_sh_stat_rdata1 (ddr_sh_stat_rdata1  ),
+   .ddr_sh_stat_int1   (ddr_sh_stat_int1    ),
+
+   .sh_ddr_stat_addr2  (sh_ddr_stat_addr2) ,
+   .sh_ddr_stat_wr2    (sh_ddr_stat_wr2     ) ,
+   .sh_ddr_stat_rd2    (sh_ddr_stat_rd2     ) ,
+   .sh_ddr_stat_wdata2 (sh_ddr_stat_wdata2  ) ,
+   .ddr_sh_stat_ack2   (ddr_sh_stat_ack2    ) ,
+   .ddr_sh_stat_rdata2 (ddr_sh_stat_rdata2  ),
+   .ddr_sh_stat_int2   (ddr_sh_stat_int2    )
+   );
+
+assign cl_sh_ddr_awid = sw_ddr_c ? sw_cl_sh_ddr_awid : sh_cl_dma_pcis_awid;
+assign cl_sh_ddr_awid_2d[1] = !sw_ddr_c ? sw_cl_sh_ddr_awid : sh_cl_dma_pcis_awid;
+assign cl_sh_ddr_awaddr = sw_ddr_c ? sw_cl_sh_ddr_awaddr : sh_cl_dma_pcis_awaddr;
+assign cl_sh_ddr_awaddr_2d[1] = !sw_ddr_c ? sw_cl_sh_ddr_awaddr : sh_cl_dma_pcis_awaddr;
+assign cl_sh_ddr_awlen = sw_ddr_c ? sw_cl_sh_ddr_awlen : sh_cl_dma_pcis_awlen;
+assign cl_sh_ddr_awlen_2d[1] = !sw_ddr_c ? sw_cl_sh_ddr_awlen : sh_cl_dma_pcis_awlen;
+assign cl_sh_ddr_awsize = sw_ddr_c ? 3'b110 : sh_cl_dma_pcis_awsize;
+assign cl_sh_ddr_awsize_2d[1] = !sw_ddr_c ? 3'b110 : sh_cl_dma_pcis_awsize;
+assign cl_sh_ddr_awvalid = sw_ddr_c ? (sw_reset_done ? sw_cl_sh_ddr_awvalid : 0) : sh_cl_dma_pcis_awvalid;
+assign cl_sh_ddr_awvalid_2d[1] = !sw_ddr_c ? (sw_reset_done ? sw_cl_sh_ddr_awvalid : 0) : sh_cl_dma_pcis_awvalid;
+assign cl_sh_dma_pcis_awready = sw_ddr_c ? sh_cl_ddr_awready_2d[1] : sh_cl_ddr_awready;
+assign sw_cl_sh_ddr_awready = !sw_ddr_c ? sh_cl_ddr_awready_2d[1] : sh_cl_ddr_awready;
 assign cl_sh_ddr_wid = 16'b0;
-assign cl_sh_ddr_wdata = sw_reset_done ? sw_cl_sh_ddr_wdata : sh_cl_dma_pcis_wdata;
-assign cl_sh_ddr_wstrb = sw_reset_done ? 64'hffff_ffff_ffff_ffff : sh_cl_dma_pcis_wstrb;
-assign cl_sh_ddr_wlast = sw_reset_done ? sw_cl_sh_ddr_wlast : sh_cl_dma_pcis_wlast;
-assign cl_sh_ddr_wvalid = sw_reset_done ? sw_cl_sh_ddr_wvalid : sh_cl_dma_pcis_wvalid;
-assign cl_sh_dma_pcis_wready = sw_reset_done ? 0 : sh_cl_ddr_wready;
-assign sw_cl_sh_ddr_wready = sw_reset_done ? sh_cl_ddr_wready : 0;
-assign cl_sh_dma_pcis_bid = sh_cl_ddr_bid;
-assign cl_sh_dma_pcis_bresp = sh_cl_ddr_bresp;
-assign cl_sh_dma_pcis_bvalid = sw_reset_done ? 0 : sh_cl_ddr_bvalid;
-assign cl_sh_ddr_bready = sw_reset_done ? 1'b1 : sh_cl_dma_pcis_bready;
-assign cl_sh_ddr_arid = sw_reset_done ? 16'b0 : sh_cl_dma_pcis_arid;
-assign cl_sh_ddr_araddr = sw_reset_done ? sw_cl_sh_ddr_araddr : sh_cl_dma_pcis_araddr;
-assign cl_sh_ddr_arlen = sw_reset_done ? sw_cl_sh_ddr_arlen : sh_cl_dma_pcis_arlen;
-assign cl_sh_ddr_arsize = sw_reset_done ? 3'b110 : sh_cl_dma_pcis_arsize;
-assign cl_sh_ddr_arvalid = sw_reset_done ? sw_cl_sh_ddr_arvalid : sh_cl_dma_pcis_arvalid;
-assign cl_sh_dma_pcis_arready = sw_reset_done ? 0 : sh_cl_ddr_arready;
-assign sw_cl_sh_ddr_arready = sw_reset_done ? sh_cl_ddr_arready : 0;
-assign cl_sh_dma_pcis_rid = sh_cl_ddr_rid;
-assign cl_sh_dma_pcis_rresp = sh_cl_ddr_rresp;
-assign cl_sh_dma_pcis_rvalid = sw_reset_done ? 0 : sh_cl_ddr_rvalid;
-assign sw_cl_sh_ddr_rvalid = sw_reset_done ? sh_cl_ddr_rvalid : 0;
-assign cl_sh_dma_pcis_rdata = sh_cl_ddr_rdata;
-assign sw_cl_sh_ddr_rdata = sh_cl_ddr_rdata;
-assign cl_sh_dma_pcis_rlast = sh_cl_ddr_rlast;
-assign cl_sh_ddr_rready = sw_reset_done ? sw_cl_sh_ddr_rready : sh_cl_dma_pcis_rready;
+assign cl_sh_ddr_wid_2d[1] = 16'b0;
+assign cl_sh_ddr_wdata = sw_ddr_c ? sw_cl_sh_ddr_wdata : sh_cl_dma_pcis_wdata;
+assign cl_sh_ddr_wdata_2d[1] = !sw_ddr_c ? sw_cl_sh_ddr_wdata : sh_cl_dma_pcis_wdata;
+assign cl_sh_ddr_wstrb = sw_ddr_c ? 64'hffff_ffff_ffff_ffff : sh_cl_dma_pcis_wstrb;
+assign cl_sh_ddr_wstrb_2d[1] = !sw_ddr_c ? 64'hffff_ffff_ffff_ffff : sh_cl_dma_pcis_wstrb;
+assign cl_sh_ddr_wlast = sw_ddr_c ? sw_cl_sh_ddr_wlast : sh_cl_dma_pcis_wlast;
+assign cl_sh_ddr_wlast_2d[1] = !sw_ddr_c ? sw_cl_sh_ddr_wlast : sh_cl_dma_pcis_wlast;
+assign cl_sh_ddr_wvalid = sw_ddr_c ? (sw_reset_done ? sw_cl_sh_ddr_wvalid : 0) : sh_cl_dma_pcis_wvalid;
+assign cl_sh_ddr_wvalid_2d[1] = !sw_ddr_c ? (sw_reset_done ? sw_cl_sh_ddr_wvalid : 0) : sh_cl_dma_pcis_wvalid;
+assign cl_sh_dma_pcis_wready = sw_ddr_c ? sh_cl_ddr_wready_2d[1] : sh_cl_ddr_wready;
+assign sw_cl_sh_ddr_wready = !sw_ddr_c ? sh_cl_ddr_wready_2d[1] : sh_cl_ddr_wready;
+assign cl_sh_dma_pcis_bid = sw_ddr_c ? sh_cl_ddr_bid_2d[1] : sh_cl_ddr_bid;
+assign cl_sh_dma_pcis_bresp = sw_ddr_c ? sh_cl_ddr_bresp_2d[1] : sh_cl_ddr_bresp;
+assign cl_sh_dma_pcis_bvalid = sw_ddr_c ? sh_cl_ddr_bvalid_2d[1] : sh_cl_ddr_bvalid;
+assign cl_sh_ddr_bready = sw_ddr_c ? 1'b1 : sh_cl_dma_pcis_bready;
+assign cl_sh_ddr_bready_2d[1] = !sw_ddr_c ? 1'b1 : sh_cl_dma_pcis_bready;
+assign cl_sh_ddr_arid = sw_ddr_c ? 16'b0 : sh_cl_dma_pcis_arid;
+assign cl_sh_ddr_arid_2d[1] = !sw_ddr_c ? 16'b0 : sh_cl_dma_pcis_arid;
+assign cl_sh_ddr_araddr = sw_ddr_c ? sw_cl_sh_ddr_araddr : sh_cl_dma_pcis_araddr;
+assign cl_sh_ddr_araddr_2d[1] = !sw_ddr_c ? sw_cl_sh_ddr_araddr : sh_cl_dma_pcis_araddr;
+assign cl_sh_ddr_arlen = sw_ddr_c ? sw_cl_sh_ddr_arlen : sh_cl_dma_pcis_arlen;
+assign cl_sh_ddr_arlen_2d[1] = !sw_ddr_c ? sw_cl_sh_ddr_arlen : sh_cl_dma_pcis_arlen;
+assign cl_sh_ddr_arsize = sw_ddr_c ? 3'b110 : sh_cl_dma_pcis_arsize;
+assign cl_sh_ddr_arsize_2d[1] = !sw_ddr_c ? 3'b110 : sh_cl_dma_pcis_arsize;
+assign cl_sh_ddr_arvalid = sw_ddr_c ? (sw_reset_done ? sw_cl_sh_ddr_arvalid : 0) : sh_cl_dma_pcis_arvalid;
+assign cl_sh_ddr_arvalid_2d[1] = !sw_ddr_c ? (sw_reset_done ? sw_cl_sh_ddr_arvalid : 0) : sh_cl_dma_pcis_arvalid;
+assign cl_sh_dma_pcis_arready = sw_ddr_c ? sh_cl_ddr_arready_2d[1] : sh_cl_ddr_arready;
+assign sw_cl_sh_ddr_arready = !sw_ddr_c ? sh_cl_ddr_arready_2d[1] : sh_cl_ddr_arready;
+assign cl_sh_dma_pcis_rid = sw_ddr_c ? sh_cl_ddr_rid_2d[1] : sh_cl_ddr_rid;
+assign cl_sh_dma_pcis_rresp = sw_ddr_c ? sh_cl_ddr_rresp_2d[1] : sh_cl_ddr_rresp;
+assign cl_sh_dma_pcis_rvalid = sw_ddr_c ? sh_cl_ddr_rvalid_2d[1] : sh_cl_ddr_rvalid;
+assign sw_cl_sh_ddr_rvalid = !sw_ddr_c ? sh_cl_ddr_rvalid_2d[1] : sh_cl_ddr_rvalid;
+assign cl_sh_dma_pcis_rdata = sw_ddr_c ? sh_cl_ddr_rdata_2d[1] : sh_cl_ddr_rdata;
+assign sw_cl_sh_ddr_rdata = !sw_ddr_c ? sh_cl_ddr_rdata_2d[1] : sh_cl_ddr_rdata;
+assign cl_sh_dma_pcis_rlast = sw_ddr_c ? sh_cl_ddr_rlast_2d[1] : sh_cl_ddr_rlast;
+assign cl_sh_ddr_rready = sw_ddr_c ? (sw_reset_done ? sw_cl_sh_ddr_rready : 0) : sh_cl_dma_pcis_rready;
+assign cl_sh_ddr_rready_2d[1] = !sw_ddr_c ? (sw_reset_done ? sw_cl_sh_ddr_rready : 0) : sh_cl_dma_pcis_rready;
 
 endmodule   

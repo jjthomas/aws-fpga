@@ -334,3 +334,72 @@ upload: checkpoints/to_aws/18_07_28-052858.Developer_CL.tar to s3://fpga-dcp/dcp
     "FpgaImageId": "afi-01dda1e7717c65851", 
     "FpgaImageGlobalId": "agfi-02d1fded37dc89793"
 }
+
+jjthomas@kiwi:/nobackup/jjthomas/fleet/aws-fpga/hdk/cl/examples/cl_dram_dma/build$ aws ec2 create-fpga-image --region us-east-1 --name pairs_50x50 --input-storage-location Bucket=fpga-dcp,Key=dcp/000000.Developer_CL.tar --logs-storage-location Bucket=fpga-dcp,Key=logs
+{
+    "FpgaImageId": "afi-0055f45a165c5b2e5",
+    "FpgaImageGlobalId": "agfi-047348478743c10ee"
+}
+
+jjthomas@kiwi:/nobackup/jjthomas/fleet/aws-fpga/hdk/cl/examples/cl_dram_dma/build$ ./upload_build.sh 000000 pairs_40x40
+upload: checkpoints/to_aws/000000.Developer_CL.tar to s3://fpga-dcp/dcp/000000.Developer_CL.tar
+{
+    "FpgaImageId": "afi-0dfb94730e5fd2905",
+    "FpgaImageGlobalId": "agfi-037e3d369f10620df"
+}
+
+jjthomas@kiwi:/nobackup/jjthomas/fleet/aws-fpga/hdk/cl/examples/cl_dram_dma/build$ ./upload_build.sh 000000 pairs_40x40_fixedupload: checkpoints/to_aws/000000.Developer_CL.tar to s3://fpga-dcp/dcp/000000.Developer_CL.tar
+{
+    "FpgaImageId": "afi-069a04be359f0fc67",
+    "FpgaImageGlobalId": "agfi-0e8399190b0260373"
+}
+
+jjthomas@kiwi:/nobackup/jjthomas/fleet/aws-fpga/hdk/cl/examples/cl_dram_dma/build$ ./upload_build.sh 000000 pairs_45x45
+upload: checkpoints/to_aws/000000.Developer_CL.tar to s3://fpga-dcp/dcp/000000.Developer_CL.tar
+{
+    "FpgaImageId": "afi-07a3a409cdceb892a",
+    "FpgaImageGlobalId": "agfi-0c427e6f94efc0817"
+}
+
+jjthomas@kiwi:/nobackup/jjthomas/fleet/aws-fpga/hdk/cl/examples/cl_dram_dma/build$ ./upload_build.sh 000000 pairs_48x48
+upload: checkpoints/to_aws/000000.Developer_CL.tar to s3://fpga-dcp/dcp/000000.Developer_CL.tar
+{
+    "FpgaImageId": "afi-02f4226b24f037d2a",
+    "FpgaImageGlobalId": "agfi-0ce30be7ff64b216d"
+}
+
+jjthomas@kiwi:/nobackup/jjthomas/fleet/aws-fpga/hdk/cl/examples/cl_dram_dma/build$ ./upload_build.sh 000000 pairs_48x48_db
+upload: checkpoints/to_aws/000000.Developer_CL.tar to s3://fpga-dcp/dcp/000000.Developer_CL.tar
+{
+    "FpgaImageId": "afi-0fe2b397f49f7fd74",
+    "FpgaImageGlobalId": "agfi-089f8461e5d944bf8"
+}
+
+jjthomas@kiwi:/nobackup/jjthomas/fleet/aws-fpga/hdk/cl/examples/cl_dram_dma/build$ ./upload_build.sh 000000 pairs_48x48_db_fixed
+upload: checkpoints/to_aws/000000.Developer_CL.tar to s3://fpga-dcp/dcp/000000.Developer_CL.tar
+{
+    "FpgaImageId": "afi-025f3d2159b3a01be",
+    "FpgaImageGlobalId": "agfi-0ddcf30e2b2915654"
+}
+
+jjthomas@kiwi:/nobackup/jjthomas/fleet/aws-fpga/hdk/cl/examples/cl_dram_dma/build$ ./upload_build.sh 000000 pairs_48x48_db_fixed2
+upload: checkpoints/to_aws/000000.Developer_CL.tar to s3://fpga-dcp/dcp/000000.Developer_CL.tar
+{
+    "FpgaImageId": "afi-042d17e9ffa892e74",
+    "FpgaImageGlobalId": "agfi-0c9b0a9f5032c1b43"
+}
+
+jjthomas@kiwi:/nobackup/jjthomas/fleet/aws-fpga/hdk/cl/examples/cl_dram_dma/build$ ./upload_build.sh 000000 pairs_48x48_db_fixed3
+upload: checkpoints/to_aws/000000.Developer_CL.tar to s3://fpga-dcp/dcp/000000.Developer_CL.tar
+{
+    "FpgaImageId": "afi-0a23274377bf29be2",
+    "FpgaImageGlobalId": "agfi-006a8909fe8062a03"
+}
+
+jjthomas@kiwi:/nobackup/jjthomas/fleet/aws-fpga/hdk/cl/examples/cl_dram_dma/build$ ./upload_build.sh 000000 pairs_48x48_db_aligned
+upload: checkpoints/to_aws/000000.Developer_CL.tar to s3://fpga-dcp/dcp/000000.Developer_CL.tar
+{
+    "FpgaImageId": "afi-0ef4c2e0a52dd73bf",
+    "FpgaImageGlobalId": "agfi-023ca8e2707196e49"
+}
+

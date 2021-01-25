@@ -20,6 +20,7 @@ module cl_ocl_slv (
 
    input set_streaming_finished,
    output logic streaming_active,
+   output logic sw_ddr_c,
 
    axi_bus_t.master sh_ocl_bus
 
@@ -290,7 +291,7 @@ assign sh_ocl_bus_q.rvalid = (slv_state==SLV_RESP) && !slv_cyc_wr;
 
 logic [31:0] cycle_counter;
 
-always_ff @(negedge sync_rst_n or posedge clk)
+always_ff @(negedge sync_rst_n or posedge clk) begin
   if (!sync_rst_n) begin
     streaming_active <= 0;
   end
@@ -305,6 +306,14 @@ always_ff @(negedge sync_rst_n or posedge clk)
   else if (streaming_active) begin
     cycle_counter <= cycle_counter + 32'b1;
   end
+
+  if (!sync_rst_n) begin
+    sw_ddr_c <= 0;
+  end
+  else if (slv_tst_wr[8]) begin
+    sw_ddr_c <= slv_tst_wdata[8];
+  end
+end
 
 
 always_ff @(negedge sync_rst_n or posedge clk)
@@ -331,8 +340,11 @@ always_comb begin
   // for cycle_counter
   tst_slv_ack[7] = slv_tst_rd[7];
   tst_slv_rdata[7] = cycle_counter;
+  // for DDR switch
+  tst_slv_ack[8] = slv_tst_wr[8];
+  tst_slv_rdata[8] = 32'hdead_beef;
 
-  for(int i=8; i<16; i++) begin
+  for(int i=9; i<16; i++) begin
     tst_slv_ack[i] = 1'b1;
     tst_slv_rdata[i] = 32'hdead_beef;
   end
